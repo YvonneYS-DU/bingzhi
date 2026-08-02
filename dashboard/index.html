@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>项目演进仪表盘</title>
+<style>
+  :root {
+    --bg: #f8f9fa;
+    --card-bg: #fff;
+    --text: #212529;
+    --muted: #6c757d;
+    --border: #dee2e6;
+    --green: #198754;
+    --blue: #0d6efd;
+    --yellow: #ffc107;
+    --red: #dc3545;
+    --purple: #6f42c1;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.6;
+    max-width: 1100px; margin: 0 auto; padding: 24px 20px 60px;
+  }
+  .header {
+    text-align: center; padding: 40px 0 32px;
+    border-bottom: 2px solid var(--border); margin-bottom: 32px;
+  }
+  .header h1 { font-size: 28px; margin-bottom: 8px; }
+  .header .subtitle { color: var(--muted); font-size: 15px; }
+  .tabs {
+    display: flex; gap: 8px; margin-bottom: 28px; flex-wrap: wrap;
+  }
+  .tab {
+    padding: 8px 20px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--card-bg);
+    font-size: 14px; transition: all 0.2s;
+  }
+  .tab:hover { border-color: var(--blue); color: var(--blue); }
+  .tab.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .card {
+    background: var(--card-bg); border-radius: 10px;
+    border: 1px solid var(--border); padding: 24px; margin-bottom: 20px;
+  }
+  .card h2 { font-size: 20px; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  .card h3 { font-size: 16px; margin: 20px 0 10px; }
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 12px;
+    font-size: 12px; font-weight: 600;
+  }
+  .badge-done { background: #d1e7dd; color: var(--green); }
+  .badge-doing { background: #fff3cd; color: #856404; }
+  .badge-planned { background: #cfe2ff; color: var(--blue); }
+  .badge-cancelled { background: #f8d7da; color: var(--red); }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+  th { background: var(--bg); text-align: left; padding: 10px 12px; border-bottom: 2px solid var(--border); font-weight: 600; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:hover td { background: #f8f9fa; }
+  .timeline { position: relative; padding-left: 28px; }
+  .timeline::before {
+    content: ""; position: absolute; left: 10px; top: 0; bottom: 0;
+    width: 2px; background: var(--border);
+  }
+  .timeline-item {
+    position: relative; padding: 16px 0 16px 24px; border-bottom: 1px solid var(--border);
+  }
+  .timeline-item:last-child { border-bottom: none; }
+  .timeline-item::before {
+    content: ""; position: absolute; left: -22px; top: 22px;
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--blue); border: 2px solid #fff;
+    box-shadow: 0 0 0 2px var(--blue);
+  }
+  .timeline-item.v-latest::before { background: var(--green); box-shadow: 0 0 0 2px var(--green); }
+  .timeline-date { font-size: 12px; color: var(--muted); }
+  .timeline-title { font-size: 16px; font-weight: 600; margin: 4px 0; }
+  .timeline-desc { font-size: 14px; color: var(--muted); }
+  .progress-bar {
+    height: 8px; background: var(--border); border-radius: 4px;
+    margin: 8px 0; overflow: hidden;
+  }
+  .progress-fill { height: 100%; background: var(--green); border-radius: 4px; transition: width 0.3s; }
+  .stats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px; margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 16px; text-align: center;
+  }
+  .stat-num { font-size: 28px; font-weight: 700; }
+  .stat-label { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .empty-state {
+    text-align: center; padding: 60px 20px; color: var(--muted);
+  }
+  .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+  .loading { text-align: center; padding: 40px; color: var(--muted); }
+  .error { color: var(--red); padding: 12px; background: #f8d7da; border-radius: 6px; margin: 12px 0; }
+  pre { background: var(--bg); padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 13px; }
+  code { font-family: "SF Mono", "Fira Code", monospace; font-size: 13px; }
+  .deploy-note {
+    background: #fff3cd; border-left: 4px solid var(--yellow);
+    padding: 12px 16px; margin: 12px 0; border-radius: 0 6px 6px 0;
+  }
+  @media print {
+    body { max-width: 100%; }
+    .tabs { display: none; }
+    .tab-panel { display: block !important; margin-bottom: 30px; }
+    .card { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1 id="projectName">项目演进仪表盘</h1>
+  <p class="subtitle" id="projectSubtitle">加载中...</p>
+</div>
+
+<div class="stats" id="stats"></div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('overview')">项目概览</div>
+  <div class="tab" onclick="switchTab('versions')">版本演进</div>
+  <div class="tab" onclick="switchTab('requirements')">需求追踪</div>
+</div>
+
+<div id="tab-overview" class="tab-panel active"></div>
+<div id="tab-versions" class="tab-panel"></div>
+<div id="tab-requirements" class="tab-panel"></div>
+
+<script>
+// 简单的 markdown 转 HTML
+function md2html(md) {
+  if (!md) return '';
+  let html = md
+    // 标题
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    // 加粗
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    // 行内代码
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    // 水平线
+    .replace(/^---$/gm, '<hr>')
+    // 表格
+    .replace(/^\|(.+)\|$/gm, (line) => {
+      const cells = line.split('|').filter(c => c.trim());
+      const isHeader = line.includes('---');
+      if (isHeader) return '';
+      const tag = line.match(/^\|[-:\s|]+\|$/) ? '' : 'td';
+      return '<tr>' + cells.map(c => `<${tag || 'td'}>${c.trim()}</${tag || 'td'}>`).join('') + '</tr>';
+    })
+    // 引用块
+    .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+    // 无序列表
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    // 段落（连续非空行）
+    .replace(/\n\n/g, '</p><p>')
+    // 代码块
+    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+
+  html = '<p>' + html + '</p>';
+  // 合并连续的 li
+  html = html.replace(/(<\/li>)\s*(<li>)/g, '$1$2');
+  html = html.replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>');
+  // 合并连续的 tr
+  html = html.replace(/(<\/tr>)\s*(<tr>)/g, '$1$2');
+  html = html.replace(/(<tr>[\s\S]*?<\/tr>)/g, (match) => {
+    if (!match.includes('<table>')) return '<table>' + match + '</table>';
+    return match;
+  });
+  // 清理空标签
+  html = html.replace(/<p>\s*<\/p>/g, '');
+  html = html.replace(/<ul>\s*<\/ul>/g, '');
+
+  return html;
+}
+
+// 提取元数据
+function extractMeta(md) {
+  const meta = {};
+  const dateMatch = md.match(/> 日期：(.+)/);
+  if (dateMatch) meta.date = dateMatch[1];
+  const commitMatch = md.match(/> 关联 commit：(.+)/);
+  if (commitMatch) meta.commit = commitMatch[1];
+  const titleMatch = md.match(/^# (.+)$/m);
+  if (titleMatch) meta.title = titleMatch[1];
+  return meta;
+}
+
+// 提取需求数据
+function parseRequirements(md) {
+  const reqs = [];
+  const tableMatch = md.match(/\| ID \| 需求 \| 状态 \| 关联版本 \| 为什么是独立需求 \|[\s\S]*?(?=\n\n|$)/);
+  if (!tableMatch) return reqs;
+
+  const lines = tableMatch[0].split('\n').filter(l => l.startsWith('| R'));
+  for (const line of lines) {
+    const cells = line.split('|').map(c => c.trim()).filter(Boolean);
+    if (cells.length >= 3) {
+      let status = 'planned';
+      if (cells[2].includes('done') || cells[2].includes('✅')) status = 'done';
+      else if (cells[2].includes('doing') || cells[2].includes('🔨')) status = 'doing';
+      else if (cells[2].includes('cancelled') || cells[2].includes('❌')) status = 'cancelled';
+
+      reqs.push({
+        id: cells[0],
+        name: cells[1],
+        status: status,
+        version: cells[3] || '-',
+        why: cells[4] || ''
+      });
+    }
+  }
+  return reqs;
+}
+
+// Tab 切换
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelector(`.tab[onclick="switchTab('${name}')"]`).classList.add('active');
+  document.getElementById(`tab-${name}`).classList.add('active');
+}
+
+// 渲染统计
+function renderStats(reqs, versions) {
+  const done = reqs.filter(r => r.status === 'done').length;
+  const doing = reqs.filter(r => r.status === 'doing').length;
+  const total = reqs.filter(r => r.status !== 'cancelled').length;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+  document.getElementById('stats').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-num" style="color:var(--blue)">${versions.length}</div>
+      <div class="stat-label">版本数</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:var(--green)">${done}</div>
+      <div class="stat-label">已完成需求</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" style="color:var(--yellow)">${doing}</div>
+      <div class="stat-label">进行中</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">${pct}%</div>
+      <div class="stat-label">完成率</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    </div>
+  `;
+}
+
+// 渲染项目概览
+function renderOverview(projectMd) {
+  document.getElementById('tab-overview').innerHTML = projectMd
+    ? `<div class="card">${md2html(projectMd)}</div>`
+    : `<div class="empty-state"><div class="icon">📋</div><p>还没有 PROJECT.md。agent 会在项目初始化时创建。</p></div>`;
+}
+
+// 渲染版本时间线
+function renderVersions(versions) {
+  if (versions.length === 0) {
+    document.getElementById('tab-versions').innerHTML =
+      '<div class="empty-state"><div class="icon">📦</div><p>还没有版本记录。agent 会在每次大改动后自动生成。</p></div>';
+    return;
+  }
+
+  let html = '<div class="card"><h2>版本演进时间线</h2><div class="timeline">';
+  versions.forEach((v, i) => {
+    const isLatest = i === versions.length - 1;
+    html += `
+      <div class="timeline-item ${isLatest ? 'v-latest' : ''}">
+        <div class="timeline-date">${v.meta.date || ''} ${v.meta.commit ? '· ' + v.meta.commit : ''} ${isLatest ? '<span class="badge badge-done" style="margin-left:8px">最新</span>' : ''}</div>
+        <div class="timeline-title">${v.meta.title || 'v' + (i+1)}</div>
+        <div class="timeline-desc">${v.summary || ''}</div>
+      </div>`;
+  });
+  html += '</div></div>';
+
+  // 展开每个版本详情
+  versions.forEach((v, i) => {
+    html += `<div class="card" style="margin-top:8px">${md2html(v.content)}</div>`;
+  });
+
+  document.getElementById('tab-versions').innerHTML = html;
+}
+
+// 渲染需求追踪
+function renderRequirements(reqMd, reqs) {
+  if (!reqMd) {
+    document.getElementById('tab-requirements').innerHTML =
+      '<div class="empty-state"><div class="icon">📝</div><p>还没有 REQUIREMENTS.md。agent 会在有新需求时创建。</p></div>';
+    return;
+  }
+
+  let html = '';
+
+  // 需求表格
+  html += '<div class="card"><h2>需求总览</h2><table><thead><tr><th>ID</th><th>需求</th><th>状态</th><th>版本</th><th>备注</th></tr></thead><tbody>';
+  reqs.forEach(r => {
+    const badges = { done: 'badge-done', doing: 'badge-doing', planned: 'badge-planned', cancelled: 'badge-cancelled' };
+    const labels = { done: '已完成', doing: '进行中', planned: '计划中', cancelled: '已取消' };
+    html += `<tr>
+      <td><code>${r.id}</code></td>
+      <td>${r.name}</td>
+      <td><span class="badge ${badges[r.status]}">${labels[r.status]}</span></td>
+      <td>${r.version}</td>
+      <td style="font-size:13px;color:var(--muted)">${r.why}</td>
+    </tr>`;
+  });
+  html += '</tbody></table></div>';
+
+  // 需求详情
+  html += `<div class="card">${md2html(reqMd)}</div>`;
+
+  document.getElementById('tab-requirements').innerHTML = html;
+}
+
+// 主加载函数
+async function load() {
+  try {
+    // 并行加载
+    const [projectRes, reqRes] = await Promise.allSettled([
+      fetch('PROJECT.md'),
+      fetch('REQUIREMENTS.md')
+    ]);
+
+    const projectMd = projectRes.status === 'fulfilled' && projectRes.value.ok
+      ? await projectRes.value.text() : null;
+    const reqMd = reqRes.status === 'fulfilled' && reqRes.value.ok
+      ? await reqRes.value.text() : null;
+
+    // 尝试加载版本列表
+    let versions = [];
+    try {
+      const listRes = await fetch('VERSIONS/');
+      if (listRes.ok) {
+        const text = await listRes.text();
+        const matches = text.match(/href="(v\d+\.md)"/g);
+        if (matches) {
+          const files = matches.map(m => m.match(/v(\d+)/)[1]).sort((a,b) => a-b);
+          for (const num of files) {
+            try {
+              const vRes = await fetch(`VERSIONS/v${num}.md`);
+              if (vRes.ok) {
+                const content = await vRes.text();
+                const meta = extractMeta(content);
+                // 提取第一段非标题内容作为摘要
+                const lines = content.split('\n');
+                let summary = '';
+                for (const line of lines) {
+                  if (!line.startsWith('#') && !line.startsWith('>') && line.trim() && !line.startsWith('|') && !line.startsWith('-') && !line.startsWith('```')) {
+                    summary = line.trim().substring(0, 80);
+                    break;
+                  }
+                }
+                versions.push({ content, meta, summary });
+              }
+            } catch(e) { console.warn('Failed to load version', num, e); }
+          }
+        }
+      }
+    } catch(e) {
+      // VERSIONS/ 目录可能不存在，正常
+      console.log('No versions directory yet');
+    }
+
+    // 更新标题
+    if (projectMd) {
+      const titleMatch = projectMd.match(/^# (.+)$/m);
+      if (titleMatch) {
+        document.getElementById('projectName').textContent = titleMatch[1];
+        document.title = titleMatch[1] + ' — 项目仪表盘';
+      }
+    }
+    document.getElementById('projectSubtitle').textContent =
+      `版本 ${versions.length} · 最后更新 ${new Date().toLocaleDateString('zh-CN')}`;
+
+    const reqs = reqMd ? parseRequirements(reqMd) : [];
+
+    renderStats(reqs, versions);
+    renderOverview(projectMd);
+    renderVersions(versions);
+    renderRequirements(reqMd, reqs);
+
+  } catch(e) {
+    document.body.innerHTML = `<div class="error">加载仪表盘失败：${e.message}<br><br>请确保在 HTTP 服务器下打开此文件。<br>运行：<code>python3 -m http.server 8080</code> 然后访问 http://localhost:8080</div>`;
+  }
+}
+
+load();
+</script>
+</body>
+</html>

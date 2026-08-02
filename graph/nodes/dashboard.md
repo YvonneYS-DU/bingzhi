@@ -22,8 +22,9 @@ package 完成 → dashboard → record → sync
 | 文件 | 什么时候更新 | 更新什么 |
 |------|-------------|---------|
 | `PROJECT.md` | 项目初始化时创建一次 | 项目边界、技术选型、初始探索 |
-| `VERSIONS/v{N}.md` | 每次大改动后 | 做了什么、测试了什么、问题、如何解决 |
-| `REQUIREMENTS.md` | 新需求进来、旧需求完成 | 需求状态、为什么新需求不同于旧需求、未完成项、部署建议 |
+| `VERSIONS/v{N}.md` | 每次大改动后；或 draft 升格后 | 做了什么、测试了什么、问题、如何解决（正式） |
+| `VERSIONS/draft-*.md` | **不由本节点创建** | 由 `repo_analyze` 写临时版本；本节点只在 promote 后写正式 v{N} |
+| `REQUIREMENTS.md` | 新需求进来、旧需求完成；Cursor `loopy.write` | 需求状态、为什么新需求不同于旧需求、未完成项、部署建议 |
 
 ## PROJECT.md — 项目概览（初始化时创建）
 
@@ -37,17 +38,26 @@ package 完成 → dashboard → record → sync
 目的：消除幻觉。让后来的人（包括领导）知道最初是怎么想的。
 ```
 
-## VERSIONS/v{N}.md — 版本记录（每次大改动后追加）
+## VERSIONS/v{N}.md — 正式版本记录（每次大改动后追加）
 
 ```text
 每次完成一个版本/大改动后创建。
 文件名：VERSIONS/v1.md, v2.md, v3.md...
+状态：formal
 
 内容：
 - 这个版本做了什么
 - 测试覆盖了什么、结果
 - 遇到什么问题、怎么解决的
 - 还遗留什么问题
+```
+
+## VERSIONS/draft-*.md — 临时版本（repo 分析）
+
+```text
+由 repo_analyze 节点生成，不由 dashboard 直接写正式史。
+状态：temporary
+确认后：loopy version promote → 变成 v{N}.md，再按正式模板补全。
 ```
 
 ## REQUIREMENTS.md — 需求追踪（持续更新）

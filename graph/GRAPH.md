@@ -1,23 +1,25 @@
 ---
-name: graph-engine
-description: 项目级 agent graph。每个项目有一个专属图，定义改代码前后的标准流程：理解、探索、验证、封装、仪表盘、记录、同步。agent 加载后按图执行。
+name: graph-engineer
+description: Graph Engineer 项目级 agent graph。skill 导入、HTML 触发选 repo、临时版本构建历史、改代码前后标准流程。
 status: active
 ---
 
-# Graph Engine — 项目级 agent 工作图
+# Graph Engineer — 项目级 agent 工作图
+
+技能名：**graph-engineer**（`.trae/skills/graph-engineer/SKILL.md`）
 
 ## 是什么
 
-Graph Engine 是项目的 agent 工作流图：
-
 ```
-启动时: 读 PREFERENCES.md（加载偏好）
+启动时: 读 PREFERENCES.md
     ↓
-项目初始化: 创建 PROJECT.md（项目探索、边界、消除幻觉）
+项目初始化: PROJECT.md + dashboard
     ↓
-改代码前：understand（建基线）
+【Graph AI / HTML 触发】
+  SKILL 01 bootstrap · SKILL 02 iterate · SKILL 03 diff
+  SKILL 04 选中无 graph 的 repo → 临时版本构建历史 + 写图
     ↓
-改代码
+改代码前：understand
     ↓
 改代码后：understand → verify → package → dashboard → record → sync
 ```
@@ -27,69 +29,105 @@ Graph Engine 是项目的 agent 工作流图：
 - 不是意图识别系统
 - 不是用户行为分析
 
-**Graph 只做一件事：让 agent 改代码前后自动完成标准流程。不发明概念，不拖住项目。**
+**只做固定节点上的具体事。不发明概念，不拖住项目。**
 
 ## 核心原则
 
 ```text
 每个节点只做一件具体的事。先做完，再记录。
 能做就不问。要问就问一次，记到 PREFERENCES.md。
+无 graph 的 repo 用 temporary 构建历史；确认后再正式 v{N}。
+dashboard/index.html 是 AI 一等触发点。
 ```
 
-## 标准图（默认）
+## 标准图
 
 ```yaml
 project_graph:
-  name: "default"
+  name: graph-engineer
   nodes:
     startup:
-      - load_prefs       # 读 PREFERENCES.md
-
+      - load_prefs
     project_init:
-      - init_dashboard   # 创建 PROJECT.md、REQUIREMENTS.md 模板
-
+      - init_dashboard
+    skill:
+      - skill_import          # 导入 graph-engineer → 前后端 + 写入
+    ask:                        # HTML Graph AI / 对话
+      - bootstrap             # SKILL 01
+      - iterate               # SKILL 02
+      - diff_boss             # SKILL 03
+      - repo_analyze          # SKILL 04 无 graph repo → temporary 历史 + 写图
     pre_change:
-      - understand       # 改前理解：记录当前状态
-
+      - understand
     post_change:
-      - understand       # 改后理解：确认改了什么、影响范围
-      - verify           # 验证：跑测试、lint
-      - package          # 封装：整理 commit
-      - dashboard        # 仪表盘：更新项目演进记录
-      - record           # 记录：写改动日志
-      - sync             # 同步：push
+      - understand
+      - verify
+      - package
+      - dashboard             # 只写正式演进；draft 由 repo_analyze 写
+      - record
+      - sync
 ```
+
+## 三个产品要点
+
+### 1. 技能叫 Graph Engineer
+
+导入 `.trae/skills/graph-engineer` 后，在 Cursor / Graph AI 里按四个 skill 场景工作。
+
+### 2. 无 graph 的 repo → 临时版本构建历史
+
+```text
+选中 folder/repo（可以从未用过 graph）
+  → AI 分析
+  → 生成版本迭代 draft（temporary）
+  → 串成可展示的构建历史
+  → 不直接冒充正式发版
+```
+
+详见 `nodes/repo_analyze.md`。
+
+### 3. HTML 是 AI 触发点
+
+`dashboard/index.html`：
+
+```text
+打开 Graph AI
+  → 选 skill / 选 repo folder
+  → 提问
+  → AI 分析
+  → AI 写创建图表 + temporary 时间轴卡片
+```
+
+闭环：选 repo → 问 AI → 分析 → 写图。只聊天不算完成。
 
 ## 节点说明
 
-| 节点 | 干什么 | 输入 | 输出 |
-|------|--------|------|------|
-| load_prefs | 加载用户偏好 | PREFERENCES.md | 行为规则 |
-| init_dashboard | 初始化项目仪表盘 | 项目信息 | PROJECT.md, REQUIREMENTS.md |
-| understand | 读懂代码改动 | diff、文件列表 | 改动说明、影响范围 |
-| verify | 确认改动正确 | 改动说明 | 测试结果、lint 结果 |
-| package | 整理提交 | 所有改动 | commit message、staged files |
-| dashboard | 更新项目演进 | 改动、测试结果 | PROJECT.md, VERSIONS/v{N}.md, REQUIREMENTS.md |
-| record | 记录改动原因 | commit 信息 | 项目日志条目 |
-| sync | 推送到远端 | commit | push 结果 |
+| 节点 | 干什么 |
+|------|--------|
+| skill_import | 导入 graph-engineer，展开前后端与写入通道 |
+| repo_analyze | 无 graph repo → draft 历史 + 写图 |
+| understand / verify / package / dashboard / record / sync | 改代码标准链路 |
 
-## 仪表盘系统
+## CLI / Tool
 
-`dashboard/` 目录包含项目演进仪表盘：
+见 `cli/LOOPY_CLI.md`。
 
-| 文件 | 用途 | 什么时候更新 |
-|------|------|-------------|
-| `PROJECT.md` | 项目概览、技术边界、初始探索 | 项目初始化 |
-| `VERSIONS/v{N}.md` | 版本记录 | 每次大改动后 |
-| `REQUIREMENTS.md` | 需求追踪 | 新需求进入/完成 |
-| `index.html` | 可视化仪表盘 | 静态，直接给领导看 |
+```bash
+loopy skill import graph-engineer
+loopy repo analyze <path>
+loopy version promote draft-v1 --as v1
+loopy write --type requirement --message "..."
+```
 
-使用方法：在 dashboard/ 目录下运行 `python3 -m http.server 8080`，浏览器打开 `http://localhost:8080`。
+## 仪表盘
 
-## 自定义图
+| 文件 | 用途 |
+|------|------|
+| `index.html` | **触发点** + 可视化图 |
+| `VERSIONS/v{N}.md` | 正式版本 |
+| `VERSIONS/draft-*.md` | 临时构建历史 |
+| `PROJECT.md` / `REQUIREMENTS.md` | 概览与需求 |
 
-项目可以增减节点。详见各个节点文档。
+## 卡住了
 
-## 图卡住了怎么办
-
-详见 `loop/LOOP.md`。
+见 `loop/LOOP.md`。

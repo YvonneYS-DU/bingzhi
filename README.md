@@ -1,77 +1,74 @@
 # Loopy 2.0 — Graph Engineer
 
-从意图工程（loop engineer）升级为图工程（graph engineer）。
+从意图工程升级为 **Graph Engineer**（图工程）。
 
-## loopy 1.0 的问题
+技能包：`.trae/skills/graph-engineer/SKILL.md`
 
-1. **AI 理解用户会出错**。尤其是 Grok 这类模型，过度解读用户意图。
-2. **层级太多**。7 层 L0-L7 大部分不需要。
-3. **一步步追问拖住项目**。L7 Proactive Following 让 agent 不停问问题。
-4. **偏好没地方存**。AI 不懂用户偏好时会乱猜。
-5. **领导看不懂项目进展**。没有演进记录，新需求为什么是新需求说不清楚。
+## 设计要点
 
-## loopy 2.0 的设计
+### 1. 技能名：graph-engineer
 
-两个引擎 + 偏好文件 + 项目仪表盘：
+导入后在 Cursor / Graph AI 使用四个场景：
 
-### Graph Engine（干活的）
+| | 场景 |
+|--|------|
+| SKILL 01 | Bootstrap version + create graph |
+| SKILL 02 | Iterate version + update graph |
+| SKILL 03 | What changed / how it differs（给领导） |
+| SKILL 04 | **选中 repo → 临时版本历史**（无 graph 的仓库补历史） |
+
+### 2. 无 graph 的 repo 也能构建历史
+
+在截图/Graph AI 里 **选中文件夹 repo → 提问 → AI 分析 → 按 repo 生成版本迭代**。  
+这些版本标记为 **temporary**，用来给从没建过 graph 的仓库补「构建历史」。确认后再 promote 成正式 `v{N}`。
+
+### 3. HTML 是 AI 触发点
+
+`dashboard/index.html` 不只是展示：
+
+```text
+选中 repo folder → 问 AI → AI 分析 → AI 写创建图表（节点/边/TEMP 时间轴）
+```
+
+本地预览：
+
+```bash
+cd dashboard && python3 -m http.server 8080
+# 打开 http://localhost:8080 → 点 AI → 选文件夹 → SKILL 04
+```
+
+## Graph 流程
 
 ```
-启动 → 读 PREFERENCES.md
-项目初始化 → 创建 PROJECT.md（探索、边界）
-改代码前 → understand（建基线）
+启动 → PREFERENCES.md
+初始化 → PROJECT.md
+Graph AI → bootstrap / iterate / diff / repo_history(temporary)
+改代码前 → understand
 改代码后 → understand → verify → package → dashboard → record → sync
 ```
 
-### Loop Engine（兜底的）
-
-区分两种追问：
-- **合理追问**：第一次遇到偏好 → 问一次 → 记 PREFERENCES.md
-- **卡住信号**：连续追问、发明概念 → Loop 介入
-
-### PREFERENCES.md
-
-用户直接说的偏好，原样记录。问一次，永不再问。
-
-### Dashboard（给领导看的）
-
-纯静态 HTML 仪表盘。三个 Tab：
-- **项目概览**：技术边界、初始探索、为什么选这条路
-- **版本演进**：时间线 + 每个版本做了什么、测了什么、遇到什么问题
-- **需求追踪**：新需求、完成情况、为什么新需求不是旧需求的延续、部署建议
-
-## 目录结构
+## 目录
 
 ```
 loopy/
-├── README.md
-├── PREFERENCES.md           # 项目偏好
-├── graph/                   # Graph Engine
-│   ├── GRAPH.md             # graph 引擎核心
-│   └── nodes/
-│       ├── understand.md    # 理解节点
-│       ├── verify.md        # 验证节点
-│       ├── package.md       # 封装节点
-│       ├── dashboard.md     # 仪表盘节点
-│       ├── record.md        # 记录节点
-│       └── sync.md          # 同步节点
-├── dashboard/               # 项目仪表盘
-│   ├── index.html           # 可视化仪表盘（给领导看）
-│   ├── PROJECT_TEMPLATE.md  # 项目概览模板
-│   ├── VERSION_TEMPLATE.md  # 版本记录模板
-│   └── REQUIREMENTS_TEMPLATE.md  # 需求追踪模板
-└── loop/                    # Loop Engine
-    └── LOOP.md              # loop 兜底
+├── .trae/skills/graph-engineer/SKILL.md
+├── cli/LOOPY_CLI.md
+├── graph/GRAPH.md
+├── graph/nodes/          # 含 skill_import、repo_analyze
+├── dashboard/index.html  # 触发点 + 图
+├── dashboard/VERSIONS/   # vN + draft-*
+└── loop/LOOP.md
 ```
 
-## 使用方式
+## CLI（语义）
 
-把 `loopy/` 放到项目根目录。agent 加载后自动：
+```bash
+loopy skill import graph-engineer
+loopy repo analyze <path>
+loopy version promote draft-v1 --as v1
+loopy write --type ...
+```
 
-1. 启动时读 `PREFERENCES.md`
-2. 项目初始化时创建 `PROJECT.md`（边界、探索）
-3. 改代码前后跑 graph
-4. 每次改完更新 dashboard（VERSIONS、REQUIREMENTS）
-5. 卡住了 loop 介入
+## Loop 兜底
 
-查看仪表盘：`cd dashboard && python3 -m http.server 8080`
+能做就不问。偏好问一次写入 `PREFERENCES.md`。连续追问 / 发明概念 → Loop 介入。

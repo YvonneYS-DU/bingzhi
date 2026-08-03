@@ -11,6 +11,9 @@ status: active
 ## 是什么
 
 ```
+【bootstrap: 项目启动，harness 落地】
+    对任意项目 → .loopy/graph/（nodes + harnesses）+ dashboard + PREFERENCES.md
+    ↓
 启动时: 读 PREFERENCES.md
     ↓
 项目初始化: PROJECT.md + dashboard
@@ -47,6 +50,8 @@ dashboard/index.html 是 AI 一等触发点。
 project_graph:
   name: graph-engineer
   nodes:
+    bootstrap:                     # 【新增】对任意项目执行启动，harness 落地
+      - bootstrap                  # 落 graph/nodes/ + graph/harnesses/ + dashboard
     startup:
       - load_prefs
     project_init:
@@ -105,6 +110,7 @@ project_graph:
 
 | 节点 | 干什么 | harness | 失败策略 |
 |------|--------|---------|---------|
+| bootstrap | 项目启动，harness 落地到 .loopy/ | [bootstrap.harness](file:///Users/bingzhi/Documents/TRAE/loopy/graph/harnesses/bootstrap.harness) | block |
 | skill_import | 导入 graph-engineer，展开前后端与写入通道 | [skill_import.harness](file:///Users/bingzhi/Documents/TRAE/loopy/graph/harnesses/skill_import.harness) | block |
 | repo_analyze | 无 graph repo → draft 历史 + 写图 | [repo_analyze.harness](file:///Users/bingzhi/Documents/TRAE/loopy/graph/harnesses/repo_analyze.harness) | warn |
 | understand | 改前建基线 / 改后确认改动 | [understand.harness](file:///Users/bingzhi/Documents/TRAE/loopy/graph/harnesses/understand.harness) | block |

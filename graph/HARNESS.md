@@ -40,6 +40,7 @@ graph/
 ├── GRAPH.md                      # 图定义 + harness 源声明
 ├── HARNESS.md                    # 本文件
 ├── nodes/                        # 节点定义（做什么）
+│   ├── bootstrap.md
 │   ├── understand.md
 │   ├── verify.md
 │   ├── package.md
@@ -49,6 +50,7 @@ graph/
 │   ├── skill_import.md
 │   └── repo_analyze.md
 └── harnesses/                    # 节点验收（怎么验证）
+    ├── bootstrap.harness
     ├── understand.harness
     ├── verify.harness
     ├── package.harness
@@ -60,10 +62,10 @@ graph/
 
 .loopy/snapshots/                 # 切版本时自动归档的快照（AI 不读，除非用户明确指令）
     ├── v1/
-    │   ├── understand.harness
+    │   ├── bootstrap.harness
     │   └── ...
     └── v2/
-        ├── understand.harness
+        ├── bootstrap.harness
         └── ...
 ```
 
@@ -95,7 +97,7 @@ on_failure: block | warn | skip   # block=阻断链路，warn=记录但继续，
 
 | 策略 | 行为 | 适用节点 |
 |------|------|---------|
-| `block` | 阻断链路，停止后续节点 | 核心质量门禁（understand、verify、sync、skill_import） |
+| `block` | 阻断链路，停止后续节点 | 核心质量门禁（bootstrap、understand、verify、sync、skill_import） |
 | `warn` | 记录失败但继续 | 辅助节点（package、dashboard、record、repo_analyze） |
 | `skip` | 跳过不执行 | 可选节点（暂无） |
 

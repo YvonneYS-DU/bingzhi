@@ -1,0 +1,47 @@
+# Bootstrap Harness
+name: bootstrap
+description: 项目启动验收。验证 harness 体系、dashboard 模板、graph 定义是否完整落入项目目录。bootstrap 是所有节点的前置。
+
+## 输入合约
+
+```yaml
+input:
+  required:
+    - project_path: string       # 目标项目根目录
+  optional:
+    - project_name: string       # 项目名（不提供则从目录名推断）
+    - overwrite: bool            # 若 .loopy/ 已存在是否覆盖（默认 false）
+    - lang: string               # 偏好语言（默认 zh-CN）
+```
+
+## 输出合约
+
+```yaml
+output:
+  - created_files: list          # 新创建的文件路径
+  - skipped_files: list          # 跳过（已存在）的文件路径
+  - landing_report: object       # 落地报告
+      - harnesses_count: int     # 落地的 harness 文件数
+      - nodes_count: int         # 落地的节点定义数
+      - dashboard_ready: bool    # dashboard 是否可用
+      - prefs_ready: bool        # PREFERENCES.md 是否创建
+```
+
+## 验收规则
+
+```yaml
+validation:
+  - .loopy/graph/harnesses/ 下必须包含全部 9 个 .harness 文件
+  - .loopy/graph/nodes/ 下必须包含全部 9 个 .md 节点定义
+  - .loopy/dashboard/index.html 必须存在且可打开
+  - .loopy/dashboard/VERSIONS/ 目录必须创建
+  - 已有的 PROJECT.md / REQUIREMENTS.md / PREFERENCES.md 不被覆盖
+  - 落地报告必须列出新建和跳过的文件
+  - 若 .loopy/ 已存在且未设置 overwrite，应跳过并报告原因
+```
+
+## 失败策略
+
+```yaml
+on_failure: block               # bootstrap 失败阻断一切后续节点
+```

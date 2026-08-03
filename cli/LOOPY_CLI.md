@@ -22,7 +22,8 @@ loopy <command> [args]
 
 | 命令 | 作用 | 场景 |
 |------|------|------|
-| `loopy graph init` | 在项目生成/刷新 graph 与 dashboard 模板 | 初始化 |
+| `loopy project init <path>` | **bootstrap：** 对项目执行启动，落 harness + graph + dashboard | 初始化 |
+| `loopy graph init` | 在项目生成/刷新 graph 与 dashboard 模板（兼容旧语义） | 初始化 |
 | `loopy graph show` | 打印当前 project_graph 节点 | 调试 |
 | `loopy skill import <path>` | 导入 skill → 绑定前后端 + 写入通道 | 场景 1 |
 | `loopy skill list` | 已导入 skill | 场景 1 |
@@ -30,6 +31,44 @@ loopy <command> [args]
 | `loopy repo analyze <path>` | 分析 repo → 临时版本 | 场景 2 |
 | `loopy version list` | 正式 + 临时版本 | 场景 2 |
 | `loopy version promote <draft> --as vN` | 临时版本升格 | 场景 2 |
+| `loopy harness update <path>` | 仅刷新 harness 文件，不动项目文档 | 维护 |
+
+## 场景 0：Bootstrap — 项目启动 / Harness 落地
+
+对任意项目执行 bootstrap，将整套 loopy 体系落入项目中：
+
+```bash
+loopy project init /path/to/project
+# 效果：
+# 1. 创建 .loopy/ 目录
+# 2. 落 graph/（nodes + harnesses）→ 全部 9 个节点的验收合约
+# 3. 落 dashboard/（index.html + PROJECT.md + REQUIREMENTS.md + VERSIONS/）
+# 4. 创建 PREFERENCES.md
+# 5. 报告落地文件清单
+```
+
+bootstrap 后的项目结构：
+
+```text
+项目根目录/
+├── .loopy/
+│   ├── graph/
+│   │   ├── GRAPH.md
+│   │   ├── HARNESS.md
+│   │   ├── nodes/
+│   │   │   └── *.md            # 9 个节点定义
+│   │   └── harnesses/
+│   │       └── *.harness        # 9 个验收文件
+│   ├── dashboard/
+│   │   ├── index.html
+│   │   ├── PROJECT.md
+│   │   ├── REQUIREMENTS.md
+│   │   └── VERSIONS/
+│   └── PREFERENCES.md
+└── ...（原有项目文件不动）
+```
+
+bootstrap 完成后，AI 可直接按 graph 链路完成项目部署实践。
 
 ## 场景 1：Skill → 前后端 + Cursor 写入
 
@@ -76,6 +115,7 @@ loopy graph init [--path .]
 ```text
 PREFERENCES.md
 graph/GRAPH.md（或引用全局 loopy graph）
+graph/harnesses/*.harness  ← 【新增】全部 harness 验收文件
 dashboard/PROJECT.md（若无）
 dashboard/REQUIREMENTS.md（若无）
 dashboard/VERSIONS/
@@ -85,6 +125,7 @@ dashboard/index.html（若无则复制模板）
 标准节点顺序：
 
 ```text
+bootstrap:      bootstrap              # 【新增】项目启动，harness 落地
 startup:        load_prefs
 project_init:   init_dashboard
 skill:          skill_import          # 场景 1
@@ -97,8 +138,10 @@ post_change:    understand → verify → package → dashboard → record → s
 
 | tool 名 | CLI | 说明 |
 |---------|-----|------|
+| `loopy.project_init` | `project init` | bootstrap 项目，落 harness |
 | `loopy.graph_init` | `graph init` | 生成 graph |
 | `loopy.graph_show` | `graph show` | 查看图 |
+| `loopy.harness_update` | `harness update` | 仅刷新 harness |
 | `loopy.skill_import` | `skill import` | 导入 skill |
 | `loopy.write` | `write` | 消息落盘 |
 | `loopy.repo_analyze` | `repo analyze` | repo → draft |

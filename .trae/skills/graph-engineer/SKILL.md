@@ -19,6 +19,7 @@ description: "Graph Engineer: bootstrap/iterate architecture graphs, explain ver
 
 | ID | UI 名称 | 干什么 |
 |----|---------|--------|
+| SKILL 00 `bootstrap` | Project init + harness landing | **项目启动：** 对任意项目落 harness 体系，AI 可直接开始部署实践 |
 | SKILL 01 `bootstrap` | Bootstrap version + create graph | 绿地：定 v1 边界，生成第一张架构图 |
 | SKILL 02 `iterate` | Iterate version + update graph | 已有图：加/演进节点，记 delta，不重画整图 |
 | SKILL 03 `diff_boss` | What changed / how it differs | 给领导讲清：新工作不是旧需求小补丁 |
@@ -110,7 +111,11 @@ loopy write --type ...
 
 ## 标准 graph 节点
 
-改代码前后仍走：
+启动链路：
+
+`bootstrap → skill_import → repo_analyze / bootstrap skill`
+
+改代码前后走：
 
 `understand → verify → package → dashboard → record → sync`
 

@@ -687,6 +687,61 @@
     cursor: pointer;
   }
   .ai-auto-btn:hover { background: rgba(61,214,140,0.14); }
+  .ai-repo-row {
+    padding: 8px 16px 10px;
+  }
+  .ai-repo-box {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 13px;
+    background: rgba(255,255,255,0.02);
+    display: grid;
+    gap: 8px;
+  }
+  .repo-label {
+    font-size: 11px;
+    color: var(--text-mute);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .repo-path {
+    font-size: 12px;
+    color: var(--text-dim);
+    word-break: break-all;
+    line-height: 1.45;
+  }
+  .repo-path.has {
+    color: var(--accent);
+  }
+  .ai-repo-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .ai-repo-pick,
+  .ai-repo-clear {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    background: rgba(255,255,255,0.03);
+    color: var(--text-dim);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    transition: border-color .15s ease, color .15s ease;
+  }
+  .ai-repo-pick:hover,
+  .ai-repo-clear:hover {
+    border-color: rgba(110,168,255,0.4);
+    color: var(--text);
+  }
+  .ai-repo-hint {
+    font-size: 11px;
+    color: var(--text-mute);
+    line-height: 1.45;
+  }
+  #aiRepoInput {
+    display: none;
+  }
   .ai-chat {
     flex: 1; min-height: 0;
     display: flex; flex-direction: column;
@@ -1005,12 +1060,6 @@ const I18N = {
     aiRepoClear: "清除",
     aiRepoHint: "触发链：选 repo → 问 AI → 分析 → 临时版本 + 写图（SKILL 04）",
     tempTag: "TEMP",
-    skillRepoName: "选中 repo → 临时版本历史",
-    skillRepoDesc: "无 graph 的 repo：选中 folder，AI 分析并生成临时版本迭代，构建历史，同时写创建图表。",
-    skillRepoPh: "例如：分析这个老项目，用临时版本补出演进史并画图",
-    skillRepoP1: "从选中 repo 构建临时版本历史",
-    skillRepoP2: "只根据目录证据切片，不编造业务",
-    skillRepoP3: "分析后写图并标 temporary",
     versionSummary: "版本摘要",
     nodeIntro: "节点介绍",
     pickNode: "从 Graph 选择一个节点",
@@ -1104,6 +1153,12 @@ const I18N = {
     aiHint: "Demo: local simulated AI replies + graph updates",
     aiSend: "Send",
     aiModeNone: "None",
+    aiRepoLabel: "Selected repo folder",
+    aiRepoEmpty: "None — repos without graph can build temporary history here",
+    aiRepoPick: "Choose folder",
+    aiRepoClear: "Clear",
+    aiRepoHint: "Trigger chain: select repo → ask AI → analyze → temporary versions + write graph (SKILL 04)",
+    tempTag: "TEMP",
     versionSummary: "Version Summary",
     nodeIntro: "Node Detail",
     pickNode: "Select a node on the graph",

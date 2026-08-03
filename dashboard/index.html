@@ -826,6 +826,10 @@
         <button type="button" data-lang="zh" class="active">中文</button>
         <button type="button" data-lang="en">EN</button>
       </div>
+      <div class="lang-toggle" id="projectToggle" style="margin-left:6px">
+        <button type="button" data-project="demo" class="active">会议室预定</button>
+        <button type="button" data-project="template">基础前后端</button>
+      </div>
     </div>
   </header>
 
@@ -1597,10 +1601,157 @@ const ARCH_EN = {
   }
 };
 
+const TEMPLATE_ARCH = {
+  project: {
+    name: "基础前后端 AI 聊天",
+    subtitle: "最简全栈模板 · 可替换 AI 适配器"
+  },
+  nodes: [
+    {
+      id: "user",
+      label: "用户",
+      layer: "actor",
+      x: 70, y: 250, w: 140, h: 78,
+      color: "#8b97ad",
+      blurb: "通过浏览器打开前端页面，与 AI 对话。",
+      since: 1
+    },
+    {
+      id: "frontend",
+      label: "Frontend",
+      layer: "client",
+      x: 280, y: 120, w: 168, h: 92,
+      color: "#6ea8ff",
+      blurb: "HTML + CSS + Vanilla JS。零依赖，纯静态聊天 UI，支持普通/流式两种模式。",
+      since: 1
+    },
+    {
+      id: "api",
+      label: "FastAPI",
+      layer: "service",
+      x: 530, y: 190, w: 180, h: 96,
+      color: "#3dd68c",
+      blurb: "异步 API。接收消息，路由到 AI 适配器，支持流式 SSE 输出。",
+      since: 1
+    },
+    {
+      id: "ai_adapter",
+      label: "AI Adapter",
+      layer: "service",
+      x: 770, y: 90, w: 168, h: 84,
+      color: "#8b7cff",
+      blurb: "统一接口 BaseAIAdapter。通过环境变量 AI_BACKEND 切换实现。",
+      since: 1
+    },
+    {
+      id: "openai_direct",
+      label: "OpenAI 直连",
+      layer: "external",
+      x: 770, y: 240, w: 168, h: 78,
+      color: "#3dd68c",
+      blurb: "通过 httpx 直接调用 OpenAI 兼容 API（chat + stream）。",
+      since: 1
+    },
+    {
+      id: "langchain",
+      label: "LangChain",
+      layer: "external",
+      x: 770, y: 370, w: 168, h: 78,
+      color: "#f5b942",
+      blurb: "通过 LangChain ChatOpenAI 调用，方便后续扩展 Chain/Agent/Tool。",
+      since: 1
+    }
+  ],
+  edges: [
+    { from: "user", to: "frontend", label: "打开页面" },
+    { from: "frontend", to: "api", label: "POST /api/chat" },
+    { from: "api", to: "ai_adapter", label: "adapter.chat()" },
+    { from: "ai_adapter", to: "openai_direct", label: "httpx 直连" },
+    { from: "ai_adapter", to: "langchain", label: "LangChain" }
+  ],
+  versions: [
+    {
+      id: 1,
+      key: "v1",
+      title: "基线：基础前后端 + 双 AI 模式",
+      date: "2026-08-03",
+      status: "done",
+      summary: "打通前端→后端→AI适配器→LLM 主链路。支持 OpenAI 直连和 LangChain 两种模式，流式与非流式。",
+      bullets: [
+        "Frontend：纯 HTML 聊天 UI，零依赖",
+        "Backend：FastAPI + AI Adapter 抽象层",
+        "OpenAI 直连：httpx 调用兼容 API",
+        "LangChain：ChatOpenAI 集成",
+        "通过 AI_BACKEND 环境变量一键切换"
+      ],
+      focus: ["frontend", "api", "ai_adapter"],
+      nodeChanges: {
+        user: { status: "born", title: "用户入口", detail: "浏览器打开 index.html，无需安装。" },
+        frontend: { status: "born", title: "聊天 UI 上线", detail: "聊天气泡 + 流式显示 + 快捷提示按钮。" },
+        api: { status: "born", title: "FastAPI 服务", detail: "/api/chat 接收消息，返回 AI 回复；支持 SSE 流式。" },
+        ai_adapter: { status: "born", title: "适配器接口", detail: "BaseAIAdapter 抽象 chat() / stream()，get_adapter() 工厂切换。" },
+        openai_direct: { status: "born", title: "OpenAI 直连通道", detail: "httpx 异步调用 OpenAI 兼容 API，支持 stream 流式。" },
+        langchain: { status: "born", title: "LangChain 通道", detail: "langchain_openai.ChatOpenAI 封装，方便扩展 Chain/Agent。" }
+      }
+    }
+  ]
+};
+
+const TEMPLATE_ARCH_EN = {
+  project: {
+    name: "Basic Fullstack AI Chat",
+    subtitle: "Minimal fullstack template · swappable AI adapter"
+  },
+  nodes: {
+    user: { label: "User", blurb: "Open index.html in browser, chat with AI." },
+    frontend: { label: "Frontend", blurb: "HTML + CSS + Vanilla JS. Zero-dependency chat UI, normal + streaming modes." },
+    api: { label: "FastAPI", blurb: "Async API. Receives messages, routes to AI adapter, supports SSE streaming." },
+    ai_adapter: { label: "AI Adapter", blurb: "Unified BaseAIAdapter interface. Swappable via AI_BACKEND env var." },
+    openai_direct: { label: "OpenAI Direct", blurb: "Direct httpx call to OpenAI-compatible API (chat + stream)." },
+    langchain: { label: "LangChain", blurb: "LangChain ChatOpenAI wrapper for future Chain/Agent/Tool extensions." }
+  },
+  edges: {
+    "user>frontend": "opens",
+    "frontend>api": "POST /api/chat",
+    "api>ai_adapter": "adapter.chat()",
+    "ai_adapter>openai_direct": "httpx direct",
+    "ai_adapter>langchain": "LangChain"
+  },
+  versions: {
+    1: {
+      title: "Baseline: fullstack + dual AI",
+      summary: "Complete User→Frontend→API→Adapter→LLM chain. OpenAI direct + LangChain, streaming + non-streaming.",
+      bullets: [
+        "Frontend: pure HTML chat UI, zero deps",
+        "Backend: FastAPI + AI Adapter abstraction",
+        "OpenAI direct: httpx to compatible API",
+        "LangChain: ChatOpenAI integration",
+        "Switch via AI_BACKEND env var"
+      ],
+      nodeChanges: {
+        user: { title: "User entry", detail: "Open index.html in browser, no install needed." },
+        frontend: { title: "Chat UI live", detail: "Bubbles + streaming display + quick prompts." },
+        api: { title: "FastAPI service", detail: "/api/chat accepts messages, returns AI reply; SSE streaming support." },
+        ai_adapter: { title: "Adapter interface", detail: "BaseAIAdapter with chat()/stream(), get_adapter() factory." },
+        openai_direct: { title: "OpenAI direct channel", detail: "httpx async call to OpenAI-compatible API with stream." },
+        langchain: { title: "LangChain channel", detail: "langchain_openai.ChatOpenAI wrapper for Chain/Agent expansion." }
+      }
+    }
+  }
+};
+
+function getA() {
+  return (state.projectId === "template") ? TEMPLATE_ARCH : ARCH;
+}
+
+function getAEn() {
+  return (state.projectId === "template") ? TEMPLATE_ARCH_EN : ARCH_EN;
+}
+
 function localizedNode(node) {
   if (!node) return node;
   if (state.lang !== "en") return node;
-  const en = ARCH_EN.nodes[node.id] || {};
+  const en = getAEn().nodes[node.id] || {};
   return Object.assign({}, node, {
     label: en.label || node.label,
     blurb: en.blurb || node.blurb
@@ -1610,7 +1761,7 @@ function localizedNode(node) {
 function localizedVersion(v) {
   if (!v) return v;
   if (state.lang !== "en") return v;
-  const en = ARCH_EN.versions[v.id] || {};
+  const en = getAEn().versions[v.id] || {};
   const base = Object.assign({}, v, {
     title: en.title || v.title,
     summary: en.summary || v.summary,
@@ -1634,7 +1785,7 @@ function localizedVersion(v) {
 function localizedEdgeLabel(edge) {
   if (state.lang !== "en") return edge.label || "";
   const key = edge.from + ">" + edge.to;
-  return ARCH_EN.edges[key] || edge.label || "";
+  return getAEn().edges[key] || edge.label || "";
 }
 
 function nodeChange(nodeId, versionId) {
@@ -1643,7 +1794,7 @@ function nodeChange(nodeId, versionId) {
 }
 
 function nodeHistory(nodeId) {
-  return ARCH.versions
+  return getA().versions
     .map(function(raw) {
       const v = localizedVersion(raw);
       const c = v.nodeChanges && v.nodeChanges[nodeId];
@@ -1655,6 +1806,7 @@ function nodeHistory(nodeId) {
 
 
 const state = {
+  projectId: (localStorage.getItem("loopy.projectId") || "demo"),
   versionId: 3,
   selectedNodeId: "frontend",
   lang: (localStorage.getItem("loopy.lang") === "en" ? "en" : "zh"),
@@ -1678,11 +1830,11 @@ const drag = {
 function $(id) { return document.getElementById(id); }
 
 function versionById(id) {
-  return ARCH.versions.find(v => v.id === id) || ARCH.versions[0];
+  return getA().versions.find(v => v.id === id) || getA().versions[0];
 }
 
 function nodeById(id) {
-  return ARCH.nodes.find(n => n.id === id);
+  return getA().nodes.find(n => n.id === id);
 }
 
 function isNodePresent(node, versionId) {
@@ -1730,7 +1882,7 @@ function curvePath(x1, y1, x2, y2) {
 
 function renderTimeline() {
   const root = $("timeline");
-  root.innerHTML = ARCH.versions.map(function(raw) {
+  root.innerHTML = getA().versions.map(function(raw) {
     const v = localizedVersion(raw);
     const active = raw.id === state.versionId ? "active" : "";
     const planned = raw.status === "planned" ? "planned" : "";
@@ -1753,7 +1905,7 @@ function renderTimeline() {
       const v = versionById(state.versionId);
       const selected = nodeById(state.selectedNodeId);
       if (!selected || !isNodePresent(selected, state.versionId)) {
-        state.selectedNodeId = (v.focus && v.focus[0]) || (ARCH.nodes.find(function(n) { return isNodePresent(n, state.versionId); }) || {}).id;
+        state.selectedNodeId = (v.focus && v.focus[0]) || (getA().nodes.find(function(n) { return isNodePresent(n, state.versionId); }) || {}).id;
       }
       renderAll();
     });
@@ -1945,11 +2097,11 @@ function renderGraph() {
   if (!content) return;
 
   const v = versionById(state.versionId);
-  const nodes = ARCH.nodes;
+  const nodes = getA().nodes;
   const nodeMap = Object.fromEntries(nodes.map(function(n) { return [n.id, n]; }));
   let html = "";
 
-  ARCH.edges.forEach(function(edge) {
+  getA().edges.forEach(function(edge) {
     const a = nodeMap[edge.from];
     const b = nodeMap[edge.to];
     if (!a || !b) return;
@@ -2091,8 +2243,8 @@ function renderDetail() {
 
 function describeRelations(nodeId) {
   const v = state.versionId;
-  const outs = ARCH.edges.filter(function(e) { return e.from === nodeId && isEdgePresent(e, v); });
-  const ins = ARCH.edges.filter(function(e) { return e.to === nodeId && isEdgePresent(e, v); });
+  const outs = getA().edges.filter(function(e) { return e.from === nodeId && isEdgePresent(e, v); });
+  const ins = getA().edges.filter(function(e) { return e.to === nodeId && isEdgePresent(e, v); });
   function fmt(list, dir) {
     if (!list.length) return t("none");
     return list.map(function(e) {
@@ -2105,10 +2257,10 @@ function describeRelations(nodeId) {
 }
 
 function renderStats() {
-  $("statVersions").textContent = String(ARCH.versions.length);
-  $("statNodes").textContent = String(ARCH.nodes.filter(function(n) { return isNodePresent(n, state.versionId); }).length);
-  const name = state.lang === "en" ? (ARCH_EN.project.name || ARCH.project.name) : ARCH.project.name;
-  const sub = state.lang === "en" ? (ARCH_EN.project.subtitle || t("subtitle")) : (ARCH.project.subtitle || t("subtitle"));
+  $("statVersions").textContent = String(getA().versions.length);
+  $("statNodes").textContent = String(getA().nodes.filter(function(n) { return isNodePresent(n, state.versionId); }).length);
+  const name = state.lang === "en" ? (getAEn().project.name || getA().project.name) : getA().project.name;
+  const sub = state.lang === "en" ? (getAEn().project.subtitle || t("subtitle")) : (getA().project.subtitle || t("subtitle"));
   $("projectName").textContent = name;
   $("projectSubtitle").textContent = sub;
   document.title = name + " — Graph Architecture";
@@ -2171,6 +2323,24 @@ function setLang(lang) {
   }
 }
 
+function setProject(projectId) {
+  state.projectId = projectId;
+  localStorage.setItem("loopy.projectId", projectId);
+  const A = getA();
+  const firstDone = A.versions.find(function(v) { return v.status === "done"; });
+  if (firstDone) state.versionId = firstDone.id;
+  state.selectedNodeId = A.nodes[0] ? A.nodes[0].id : null;
+  var toggle = $("projectToggle");
+  if (toggle) {
+    toggle.querySelectorAll("button").forEach(function(btn) {
+      btn.classList.toggle("active", btn.getAttribute("data-project") === projectId);
+    });
+  }
+  applyStaticI18n();
+  renderAll();
+  applyCamera();
+}
+
 function bindLangToggle() {
   const toggle = $("langToggle");
   if (!toggle || toggle.dataset.bound) return;
@@ -2179,6 +2349,21 @@ function bindLangToggle() {
     btn.addEventListener("click", function() {
       setLang(btn.getAttribute("data-lang"));
     });
+  });
+}
+
+function bindProjectToggle() {
+  var toggle = $("projectToggle");
+  if (!toggle || toggle.dataset.bound) return;
+  toggle.dataset.bound = "1";
+  toggle.querySelectorAll("button").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      setProject(btn.getAttribute("data-project"));
+    });
+  });
+  // Sync initial active
+  toggle.querySelectorAll("button").forEach(function(btn) {
+    btn.classList.toggle("active", btn.getAttribute("data-project") === state.projectId);
   });
 }
 
@@ -2201,14 +2386,14 @@ async function hydrateFromDocs() {
       const md = await projectRes.value.text();
       state.docs.project = md;
       const titleMatch = md.match(/^# (.+)$/m);
-      if (titleMatch) ARCH.project.name = titleMatch[1].trim();
+      if (titleMatch) getA().project.name = titleMatch[1].trim();
     }
     if (reqRes.status === "fulfilled" && reqRes.value.ok) {
       state.docs.requirements = await reqRes.value.text();
     }
 
     // optional: pull titles/dates from version markdown if available
-    for (const v of ARCH.versions) {
+    for (const v of getA().versions) {
       if (v.status === "planned") continue;
       try {
         const res = await fetch(`VERSIONS/${v.key}.md`);
@@ -2372,17 +2557,17 @@ function currentVersion() {
 }
 
 function prevVersion() {
-  const list = ARCH.versions.filter(function(v) { return v.id < state.versionId; });
+  const list = getA().versions.filter(function(v) { return v.id < state.versionId; });
   return list.length ? list[list.length - 1] : null;
 }
 
 function nextPlannedVersion() {
-  return ARCH.versions.find(function(v) { return v.status === "planned"; }) || null;
+  return getA().versions.find(function(v) { return v.status === "planned"; }) || null;
 }
 
 function summarizeGraphForPrompt() {
   const v = currentVersion();
-  const present = ARCH.nodes.filter(function(n) { return isNodePresent(n, state.versionId); });
+  const present = getA().nodes.filter(function(n) { return isNodePresent(n, state.versionId); });
   const changed = Object.keys(v.nodeChanges || {});
   return {
     version: v.key + " " + v.title,
@@ -2402,7 +2587,7 @@ function runAiAutoDecide() {
   if (state.ai.repoPath) {
     state.ai.skillId = "repo_history";
     decision = "检测到已选中 repo folder。我选择【SKILL 04 选中 repo → 临时版本历史】：无 graph 也可先构建 temporary 历史并写图。";
-  } else if (ARCH.versions.length <= 1) {
+  } else if (getA().versions.length <= 1) {
     state.ai.skillId = "bootstrap";
     decision = "检测到图还很早。我选择【启动版本 + 创建图】：先把 v1 主链路讲清楚，避免一上来堆功能。";
   } else if (planned) {
@@ -2486,14 +2671,14 @@ function topLevelHints(paths) {
 function ensureNode(id, spec) {
   let n = nodeById(id);
   if (n) return n;
-  ARCH.nodes.push(Object.assign({ id: id, since: 1, w: 150, h: 78, color: "#6ea8ff", x: 100, y: 100 }, spec));
+  getA().nodes.push(Object.assign({ id: id, since: 1, w: 150, h: 78, color: "#6ea8ff", x: 100, y: 100 }, spec));
   return nodeById(id);
 }
 
 function ensureEdge(from, to, label, labelEn) {
-  const exists = ARCH.edges.some(function(e) { return e.from === from && e.to === to; });
+  const exists = getA().edges.some(function(e) { return e.from === from && e.to === to; });
   if (exists) return;
-  ARCH.edges.push({
+  getA().edges.push({
     from: from,
     to: to,
     label: label || "use",
@@ -2504,7 +2689,7 @@ function ensureEdge(from, to, label, labelEn) {
 
 function nextVersionNumericId() {
   let max = 0;
-  ARCH.versions.forEach(function(v) { if (v.id > max) max = v.id; });
+  getA().versions.forEach(function(v) { if (v.id > max) max = v.id; });
   return max + 1;
 }
 
@@ -2531,7 +2716,7 @@ function skillRepoHistory(userText) {
   const baseId = nextVersionNumericId();
   const nameHint = repo.split(/[\\/]/).filter(Boolean).pop() || "repo";
 
-  ARCH.versions = ARCH.versions.filter(function(v) {
+  getA().versions = getA().versions.filter(function(v) {
     return !(v.status === "temporary" && v.sourceRepo === repo);
   });
 
@@ -2601,9 +2786,9 @@ function skillRepoHistory(userText) {
   if (!hasFrontend && hasApi) ensureEdge("user", "api", "调用", "calls");
   if (hasApi && hasDb) ensureEdge("api", "db", "读写", "R/W");
   const repoTarget = hasApi ? "api" : (hasFrontend ? "frontend" : "user");
-  const existsRepoEdge = ARCH.edges.some(function(e) { return e.from === "repo_root" && e.to === repoTarget; });
+  const existsRepoEdge = getA().edges.some(function(e) { return e.from === "repo_root" && e.to === repoTarget; });
   if (!existsRepoEdge) {
-    ARCH.edges.push({ from: "repo_root", to: repoTarget, label: "包含", labelEn: "contains", since: baseId });
+    getA().edges.push({ from: "repo_root", to: repoTarget, label: "包含", labelEn: "contains", since: baseId });
   }
 
   const d1 = {
@@ -2701,8 +2886,8 @@ function skillRepoHistory(userText) {
     }
   };
 
-  ARCH.versions.push(d1, d2);
-  ARCH.versions.sort(function(a, b) { return a.id - b.id; });
+  getA().versions.push(d1, d2);
+  getA().versions.sort(function(a, b) { return a.id - b.id; });
   state.versionId = d1.id;
   state.selectedNodeId = d1.focus[0];
 
@@ -2835,7 +3020,7 @@ function skillDiffBoss(userText) {
   });
 
   // nodes present now but not in prev
-  const newNodes = ARCH.nodes.filter(function(n) {
+  const newNodes = getA().nodes.filter(function(n) {
     return isNodePresent(n, cur.id) && !isNodePresent(n, prev.id);
   }).map(function(n) { return n.label; });
 
@@ -2980,13 +3165,14 @@ function bindStageResizer() {
 
 (async function init() {
   await hydrateFromDocs();
-  const latestDone = [...ARCH.versions].reverse().find(v => v.status === "done");
+  const latestDone = [...getA().versions].reverse().find(v => v.status === "done");
   if (latestDone) state.versionId = latestDone.id;
   if (!state.lang) state.lang = "zh";
   document.documentElement.lang = state.lang === "en" ? "en" : "zh-CN";
   bindPanZoomOnce();
   bindStageResizer();
   bindLangToggle();
+  bindProjectToggle();
   bindAiUi();
   applyStaticI18n();
   renderAll();

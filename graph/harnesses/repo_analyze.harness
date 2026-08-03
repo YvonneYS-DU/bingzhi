@@ -1,0 +1,42 @@
+# Repo Analyze Harness
+name: repo_analyze
+description: 为无 graph 的 repo 生成临时版本迭代（draft），构建可展示的历史。HTML Graph AI 是一等触发点。
+
+## 输入合约
+
+```yaml
+input:
+  required:
+    - repo_path: string         # 目标 repo 路径
+  optional:
+    - max_drafts: int           # 最多生成几个临时版本（默认 3）
+```
+
+## 输出合约
+
+```yaml
+output:
+  - drafts: list                # 临时版本列表
+      - id: string              # draft 标识
+      - summary: string         # 版本概要
+      - evidence: list          # 支撑证据（代码/文档引用）
+  - graph_data: object          # 图数据（节点、边、nodeChanges）
+  - draft_files: list           # 写入的 draft 文件路径
+```
+
+## 验收规则
+
+```yaml
+validation:
+  - 只写事实和可验证观察，禁止编造业务故事
+  - 阶段切不动就少切，不为了"好看"硬凑版本
+  - 生成 VERSIONS/draft-*.md，status: temporary
+  - 不把分析草稿直接当正式发版史
+  - HTML 流程必须闭环：选 repo → 分析 → 写图 + 写 draft，只聊天不算完成
+```
+
+## 失败策略
+
+```yaml
+on_failure: warn                # 分析失败不阻断，用户可手动处理
+```

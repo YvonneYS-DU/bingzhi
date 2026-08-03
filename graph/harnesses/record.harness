@@ -1,0 +1,44 @@
+# Record Harness
+name: record
+description: 记录改动日志。写入项目 CHANGELOG 或 .loopy/log.md，方便以后回顾"当时为什么这么改"。
+
+## 输入合约
+
+```yaml
+input:
+  required:
+    - commits: list             # package 节点产出的 commit 列表
+    - understand_output:         # understand 节点的输出
+        diff_summary: string
+        reason: string
+        impact_scope: list
+    - verify_results:            # verify 节点的输出
+        passed: boolean
+        test_results: object
+  optional:
+    - notes: string             # 额外的注意事项
+```
+
+## 输出合约
+
+```yaml
+output:
+  - log_entry: string           # 写入的日志条目
+  - log_file: string            # 日志文件路径
+```
+
+## 验收规则
+
+```yaml
+validation:
+  - 必须包含：日期、改动摘要、原因、改了什么（文件 + 行号）
+  - 每条记录 5-10 行，不写长篇大论
+  - 不写"提升了系统可维护性"之类的评价
+  - 不分析用户工作习惯
+```
+
+## 失败策略
+
+```yaml
+on_failure: warn                # 日志记录失败不阻断主流程
+```

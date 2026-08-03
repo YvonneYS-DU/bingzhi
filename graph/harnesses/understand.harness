@@ -1,0 +1,44 @@
+# Understand Harness
+name: understand
+description: 改前建基线 / 改后确认改动。说清楚改了什么、为什么改、影响了谁。
+
+## 输入合约
+
+```yaml
+input:
+  required:
+    - changed_files: list       # 涉及的文件路径列表
+    - change_description: string # 改动目标描述
+  optional:
+    - context_files: list       # 额外上下文文件（如关联模块）
+```
+
+## 输出合约
+
+```yaml
+output:
+  pre_change:
+    - baseline: string          # 改前基线：文件当前行为描述
+    - involved_files: list      # 涉及文件 + 各自职责
+  post_change:
+    - diff_summary: string      # 实际改了什么
+    - reason: string            # 为什么这么改
+    - impact_scope: list        # 受影响的范围（文件、函数、模块）
+```
+
+## 验收规则
+
+```yaml
+validation:
+  - baseline 至少包含"涉及文件"、"当前行为"、"改动目标"三个部分
+  - diff_summary 非空
+  - impact_scope 非空
+  - 不能包含评价性语言（如"提升了可维护性"、"优化了架构"）
+  - 不能猜测用户意图，只描述代码层面事实
+```
+
+## 失败策略
+
+```yaml
+on_failure: block
+```

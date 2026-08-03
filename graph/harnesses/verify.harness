@@ -1,0 +1,45 @@
+# Verify Harness
+name: verify
+description: 验证代码改动正确性。跑测试、检查 lint、确认项目能正常运行。不改代码，只检查。
+
+## 输入合约
+
+```yaml
+input:
+  required:
+    - changed_files: list       # 改动文件列表（来自 understand 输出）
+    - project_root: string      # 项目根目录
+  optional:
+    - test_command: string      # 自定义测试命令，默认自动检测
+    - lint_config: string       # lint 配置文件路径
+```
+
+## 输出合约
+
+```yaml
+output:
+  - test_results:               # 测试结果
+      passed: int               # 通过数
+      failed: int               # 失败数
+      failures: list            # 失败详情（文件、行号、错误信息）
+  - lint_results:               # lint 结果
+      new_warnings: int         # 新增警告数
+      new_errors: int           # 新增错误数
+  - passed: boolean             # 整体是否通过
+```
+
+## 验收规则
+
+```yaml
+validation:
+  - 测试全部通过（failed == 0）
+  - lint 无新增错误（new_errors == 0）
+  - 如有失败，必须列出具体文件和行号
+  - 不修改代码，不判断设计好坏，不说"建议重构"
+```
+
+## 失败策略
+
+```yaml
+on_failure: block               # 验证失败阻断链路，需人工处理
+```

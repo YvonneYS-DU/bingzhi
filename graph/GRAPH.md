@@ -1,6 +1,6 @@
 ---
 name: graph-engineer
-description: Graph Engineer 项目级 agent graph。skill 导入、HTML 触发选 repo、临时版本构建历史、改代码前后标准流程。
+description: Graph Engineer 项目级 agent graph。skill 导入、HTML 触发选 repo、临时版本构建历史、改代码前后标准流程。每个节点对应 harness 验收文件。
 status: active
 ---
 
@@ -38,6 +38,7 @@ status: active
 能做就不问。要问就问一次，记到 PREFERENCES.md。
 无 graph 的 repo 用 temporary 构建历史；确认后再正式 v{N}。
 dashboard/index.html 是 AI 一等触发点。
+每个节点跑之前知道要什么，跑之后知道对不对。不对就回去重来。
 ```
 
 ## 标准图
@@ -102,11 +103,24 @@ project_graph:
 
 ## 节点说明
 
-| 节点 | 干什么 |
-|------|--------|
-| skill_import | 导入 graph-engineer，展开前后端与写入通道 |
-| repo_analyze | 无 graph repo → draft 历史 + 写图 |
-| understand / verify / package / dashboard / record / sync | 改代码标准链路 |
+| 节点 | 干什么 | harness | 失败策略 |
+|------|--------|---------|---------|
+| skill_import | 导入 graph-engineer，展开前后端与写入通道 | [skill_import.harness](file:///Users/bingzhi/Documents/TRAE/loopy/graph/harnesses/skill_import.harness) | block |
+| repo_analyze | 无 graph repo → draft 历史 + 写图 | [repo_analyze.harness](file:///Users/bingzhi/Documents/TRAE/loopy/graph/harnesses/repo_analyze.harness) | warn |
+| understand | 改前建基线 / 改后确认改动 | [understand.harness](file:///Users/bingzhi/Documents/TRAE/loopy/graph/harnesses/understand.harness) | block |
+| verify | 跑测试、lint，只报告不改代码 | [verify.harness](file:///Users/bingzhi/Documents/TRAE/loopy/graph/harnesses/verify.harness) | block |
+| package | 整理 commit、写 message | [package.harness](file:///Users/bingzhi/Documents/TRAE/loopy/graph/harnesses/package.harness) | warn |
+| dashboard | 更新演进记录，切版本时归档 harness 快照 | [dashboard.harness](file:///Users/bingzhi/Documents/TRAE/loopy/graph/harnesses/dashboard.harness) | warn |
+| record | 写入项目日志 | [record.harness](file:///Users/bingzhi/Documents/TRAE/loopy/graph/harnesses/record.harness) | warn |
+| sync | push 到远端 | [sync.harness](file:///Users/bingzhi/Documents/TRAE/loopy/graph/harnesses/sync.harness) | block |
+
+## Harness 系统
+
+每个节点对应一个 `.harness` 文件，定义输入合约、输出合约、验收规则和失败策略。
+
+- **唯一源：`graph/harnesses/`** — 所有节点只从这里读 harness 定义
+- **`.loopy/snapshots/v{N}/`** — 切版本时自动归档的快照。AI 不读，除非用户明确指令
+- 详设：**[HARNESS.md](file:///Users/bingzhi/Documents/TRAE/loopy/graph/HARNESS.md)**
 
 ## CLI / Tool
 

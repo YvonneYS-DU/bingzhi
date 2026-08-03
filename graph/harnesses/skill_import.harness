@@ -1,0 +1,41 @@
+# Skill Import Harness
+name: skill_import
+description: 导入 skill 并展开为前后端能力 + Cursor 写入通道。默认导入 graph-engineer。
+
+## 输入合约
+
+```yaml
+input:
+  required:
+    - skill_path: string        # skill 路径（如 .trae/skills/graph-engineer/）
+    - project_root: string      # 目标项目根目录
+  optional:
+    - preferences_exist: boolean # 是否已有 PREFERENCES.md
+```
+
+## 输出合约
+
+```yaml
+output:
+  - backend_ready: boolean      # 后端能力是否就绪（graph / API / 写入接口）
+  - frontend_ready: boolean     # 前端能力是否就绪（dashboard 可操作入口）
+  - write_channel: string       # 写入通道状态
+  - bound_nodes: list           # 绑定的 graph 节点
+```
+
+## 验收规则
+
+```yaml
+validation:
+  - 解析 SKILL.md frontmatter（name, description）成功
+  - skill 行为已绑定到现有 graph 节点
+  - 缺节点时按标准图补默认节点，不发明新抽象
+  - dashboard 可展示，对话区可选 repo / 看临时版本
+  - 不把 Cursor 闲聊全部落盘，只落可归类的项目信息
+```
+
+## 失败策略
+
+```yaml
+on_failure: block               # skill 导入失败必须阻断
+```

@@ -75,6 +75,22 @@ package 完成 → dashboard → record → sync
 - 部署建议（上线要注意什么）
 ```
 
+## Harness 快照归档（切版本时）
+
+切版本（`is_new_version == true`）时，自动归档当前 harness 定义：
+
+```text
+graph/harnesses/          →  复制到  .loopy/snapshots/v{N}/
+  ├── understand.harness            ├── understand.harness
+  ├── verify.harness                ├── verify.harness
+  └── ...                           └── ...
+```
+
+快照规则：
+- 只在切版本时写入，日常更新不触发
+- 目录 `.loopy/snapshots/` 对 AI 不可见（除非用户明确指令）
+- 用途：对比历史版本验收标准（如 `diff .loopy/snapshots/v1/verify.harness graph/harnesses/verify.harness`）
+
 ## 不做的事
 
 - 不发明概念
@@ -89,4 +105,6 @@ package 完成 → dashboard → record → sync
 1. 项目现在做到哪了
 2. 有没有坑
 3. 新需求为什么要单独做
+
+切版本时，顺手归档 harness 快照。不额外问，不多余操作。
 ```

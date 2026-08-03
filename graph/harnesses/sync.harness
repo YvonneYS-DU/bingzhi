@@ -1,0 +1,41 @@
+# Sync Harness
+name: sync
+description: 同步节点。push 代码到远端。不改代码，只推送。
+
+## 输入合约
+
+```yaml
+input:
+  required:
+    - commits_ready: boolean    # package 节点确认 commit 已完成
+    - remote: string            # 远端名称（默认 origin）
+    - branch: string            # 目标分支
+  optional:
+    - force_push: boolean       # 是否 force push（默认 false）
+```
+
+## 输出合约
+
+```yaml
+output:
+  - pushed: boolean             # 是否推送成功
+  - commit_hash: string         # 推送的 commit hash
+  - remote_url: string          # 远端地址
+  - ci_status: string           # CI 状态（如有）
+```
+
+## 验收规则
+
+```yaml
+validation:
+  - 不 force push（除非用户明确要求）
+  - 不改 git config
+  - push 前确认 commit message 没问题
+  - 不操作 main/master 以外的分支（除非用户指定）
+```
+
+## 失败策略
+
+```yaml
+on_failure: block               # 推送失败必须阻断，需要人工处理
+```

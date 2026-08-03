@@ -1,0 +1,42 @@
+# Package Harness
+name: package
+description: 封装改动。整理 commit、写 commit message、准备提交。不改代码，只整理。
+
+## 输入合约
+
+```yaml
+input:
+  required:
+    - changed_files: list       # 改动文件列表
+    - verify_passed: boolean    # verify 节点已通过（必须为 true）
+  optional:
+    - commit_message_hint: string # 用户指定的 commit message 方向
+```
+
+## 输出合约
+
+```yaml
+output:
+  - commits: list               # 待提交的 commit 列表
+      - type: string            # feat | fix | refactor | docs | test | chore
+      - message: string         # 一句话描述
+      - files: list             # 包含的文件
+  - ready: boolean              # 是否准备好提交（等待用户确认）
+```
+
+## 验收规则
+
+```yaml
+validation:
+  - 每个 commit 只做一件事（相关文件放一起，不相关的分开）
+  - commit message 格式: <type>: <一句话描述>
+  - type 只在 [feat, fix, refactor, docs, test, chore] 中选择
+  - 不自动 commit，必须让用户确认
+  - 不改代码
+```
+
+## 失败策略
+
+```yaml
+on_failure: warn                # 封装失败不阻断，用户可以手动处理
+```

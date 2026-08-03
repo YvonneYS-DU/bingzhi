@@ -1,0 +1,52 @@
+# Dashboard Harness
+name: dashboard
+description: 更新项目演进记录。写 PROJECT / VERSIONS / REQUIREMENTS。切版本时自动归档 harness 快照。
+
+## 输入合约
+
+```yaml
+input:
+  required:
+    - commits: list             # package 节点产出的 commit 列表
+    - version_id: string        # 当前版本号（如 v3）
+  optional:
+    - is_new_version: boolean   # 是否切版本（默认 false）
+```
+
+## 输出合约
+
+```yaml
+output:
+  - updated_files: list         # 更新的文件列表
+      - path: string
+      - change_summary: string
+  - snapshot_created: boolean   # 是否创建了 harness 快照（仅切版本时）
+  - snapshot_path: string       # 快照路径（如 .loopy/snapshots/v3/）
+```
+
+## 验收规则
+
+```yaml
+validation:
+  - PROJECT.md 更新：只写事实（项目边界、技术选型），不写评价
+  - VERSIONS/v{N}.md 更新：做了什么、测试结果、遇到的问题及解决、遗留问题
+  - REQUIREMENTS.md 更新：需求状态变更（done / doing / planned / cancelled）
+  - 不发明概念，不写"提升了系统可维护性"之类的空话
+  - 切版本时自动复制 graph/harnesses/ → .loopy/snapshots/v{N}/
+```
+
+## 失败策略
+
+```yaml
+on_failure: warn                # 仪表盘更新失败不阻断主流程
+```
+
+## 快照规则
+
+```yaml
+snapshot:
+  source: graph/harnesses/      # 快照来源
+  target: .loopy/snapshots/v{N}/ # 快照目标
+  trigger: is_new_version == true # 仅在切版本时触发
+  keep: permanent               # 永久保留，不自动清理
+```

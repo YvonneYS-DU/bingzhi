@@ -1,65 +1,43 @@
-# 基础前后端 AI 聊天模板
+# 基础前后端 Graph Engineer 模板
 
-> 最简全栈模板：前端聊天 UI + 后端 FastAPI + 可替换 AI 适配器。
+> 这是一个 Graph Engineer Panel 模板，用于通过 AI 创建/更新项目架构图。
 
-## 项目是什么
+## 这是什么
 
-一个可以直接启动的最基础前后端应用。员工通过 Web 聊天界面与 AI 对话，后端支持两种 AI 接入方式：
-- **OpenAI 直连**：通过 `httpx` 直接调用 OpenAI 兼容 API
-- **LangChain**：通过 LangChain 的 `ChatOpenAI` 调用，方便后续扩展 Chain / Agent
+一个独立的 Graph Engineer 仪表盘（`panel.html`），不是可运行的前后端应用代码。
 
-## 技术栈
+- 包含架构图可视化（节点 / 边 / 版本时间轴）
+- 包含 AI 助手面板（4 个 Skill），可通过 AI 操作：
+  - **SKILL 01**：bootstrap - 启动版本 + 创建图
+  - **SKILL 02**：iterate - 版本迭代 + 更新图
+  - **SKILL 03**：diff_boss - 看变化 / 给老板讲差异
+  - **SKILL 04**：repo_history - 选中 repo 构建临时版本历史
+- 默认图：用户 → 前端 → 后端 → 数据库（基础全栈架构）
 
-| 层 | 选型 | 原因 |
-|----|------|------|
-| 前端 | HTML + CSS + Vanilla JS | 零依赖，打开即用 |
-| 后端 | Python FastAPI | 异步支持好，适合流式输出 |
-| AI 层 | adapter 模式 | 通过 `AI_BACKEND` 环境变量切换，新增 AI 后端只需继承 `BaseAIAdapter` |
-
-## 架构图
-
-```
-[用户] → 前端 (index.html) → FastAPI → AI Adapter
-                                          ├── OpenAI 直连 → OpenAI 兼容 API
-                                          └── LangChain    → LangChain ChatOpenAI
-```
-
-## 启动
+## 使用方式
 
 ```bash
-# 1. 后端
-cd backend
-cp .env.example .env   # 填入 OPENAI_API_KEY
-pip install -r requirements.txt
-python main.py          # 默认 http://localhost:8000
-
-# 切换 AI 后端
-AI_BACKEND=langchain python main.py
-
-# 2. 前端
-# 直接用浏览器打开 frontend/index.html
-# 或
-cd frontend && python3 -m http.server 3000
+# 本地预览
+cd templates/basic-fullstack
+python3 -m http.server 8080
+# 打开 http://localhost:8080/panel.html
 ```
 
-## AI 适配器接口
+或直接用浏览器打开 `panel.html`。
 
-所有 AI 后端统一通过 `BaseAIAdapter` 接口访问：
+点击右下角 **AI 助手** 按钮，进入 AI 面板创建/更新架构图。
 
-```python
-class BaseAIAdapter(ABC):
-    async def chat(self, messages: list[dict]) -> str: ...
-    async def stream(self, messages: list[dict]) -> AsyncIterator[str]: ...
-```
+## 技术边界
 
-新增 AI 后端只需 3 步：
-1. 继承 `BaseAIAdapter`，实现 `chat()` 和 `stream()`
-2. 在 `ai/__init__.py` 的 `get_adapter()` 中注册新的 backend 名称
-3. 通过 `AI_BACKEND=xxx` 切换
+| 项 | 说明 |
+|----|------|
+| 类型 | 纯静态 HTML（零依赖、零构建） |
+| 数据 | JS 内嵌（TEMPLATE_ARCH / ARCH），无后端 |
+| AI | 本地 Demo 模拟；接 agent 后可写 draft 文件落盘 |
+| 项目切换 | 顶栏「基础前后端」/「会议室预定」切换不同 graph 数据 |
 
-## 为什么选择这个模板
+## 自定义
 
-- **零额外依赖的前端**：HTML 直接打开，不需要 Node.js / npm
-- **AI 层可插拔**：直连 API 和 LangChain 共用同一套接口，方便教学对比
-- **流式输出**：支持 SSE streaming，前端实时显示 AI 回复
-- **易于扩展**：后续可以加 Chain、Agent、Tool calling 等 LangChain 高级功能
+1. 修改 `TEMPLATE_ARCH` 节点/边/版本数据
+2. 或通过 AI 面板（点 AI → 输目标 → AI 模拟写图）
+3. 接真实 agent 后：AI 直接操作 DOM 或写 `VERSIONS/draft-*.md`

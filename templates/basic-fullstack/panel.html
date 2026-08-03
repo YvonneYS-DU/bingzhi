@@ -1,0 +1,3183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Graph Architecture — 项目演进</title>
+<style>
+  :root {
+    --bg: #07090f;
+    --bg-elevated: #0d111a;
+    --bg-panel: rgba(16, 22, 35, 0.92);
+    --bg-soft: #121826;
+    --border: rgba(148, 163, 184, 0.14);
+    --border-strong: rgba(148, 163, 184, 0.28);
+    --text: #e8eef9;
+    --text-dim: #8b97ad;
+    --text-mute: #5d6b82;
+    --accent: #6ea8ff;
+    --accent-2: #8b7cff;
+    --green: #3dd68c;
+    --amber: #f5b942;
+    --rose: #f07178;
+    --cyan: #4fd1c5;
+    --node-glow: rgba(110, 168, 255, 0.35);
+    --shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+    --radius: 16px;
+    --font: "SF Pro Display", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --mono: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--font);
+    background:
+      radial-gradient(1200px 600px at 10% -10%, rgba(110, 168, 255, 0.14), transparent 55%),
+      radial-gradient(900px 500px at 90% 0%, rgba(139, 124, 255, 0.12), transparent 50%),
+      radial-gradient(800px 500px at 50% 110%, rgba(79, 209, 197, 0.08), transparent 50%),
+      var(--bg);
+    color: var(--text);
+    line-height: 1.55;
+    overflow: hidden;
+  }
+
+  .app {
+    height: 100vh;
+    display: grid;
+    grid-template-rows: auto auto 1fr;
+    gap: 0;
+  }
+
+  /* ── Top bar ── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 28px 10px;
+    gap: 16px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+  }
+  .brand-mark {
+    width: 38px; height: 38px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    display: grid; place-items: center;
+    box-shadow: 0 0 28px rgba(110, 168, 255, 0.35);
+    flex-shrink: 0;
+  }
+  .brand-mark svg { width: 20px; height: 20px; }
+  .brand h1 {
+    font-size: 17px; font-weight: 650; letter-spacing: -0.02em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .brand p {
+    font-size: 12px; color: var(--text-dim); margin-top: 2px;
+  }
+  .top-meta {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end;
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 999px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    color: var(--text-dim); font-size: 12px;
+  }
+  .chip b { color: var(--text); font-weight: 600; }
+  .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--green); box-shadow: 0 0 10px var(--green);
+  }
+
+  /* ── Version timeline ── */
+  .timeline-wrap {
+    padding: 8px 28px 14px;
+  }
+  .timeline-card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015));
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 16px 18px 14px;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(18px);
+  }
+  .timeline-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px; gap: 12px;
+  }
+  .timeline-head h2 {
+    font-size: 13px; font-weight: 600; color: var(--text-dim);
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .timeline-hint { font-size: 12px; color: var(--text-mute); }
+  .timeline {
+    position: relative;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(150px, 1fr);
+    gap: 10px;
+    overflow-x: auto;
+    padding: 6px 2px 4px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148,163,184,0.25) transparent;
+  }
+  .timeline::before {
+    content: "";
+    position: absolute;
+    left: 18px; right: 18px; top: 28px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(110,168,255,0.35), rgba(139,124,255,0.35), transparent);
+    pointer-events: none;
+  }
+  .v-card {
+    position: relative;
+    border: 1px solid var(--border);
+    background: rgba(7, 9, 15, 0.55);
+    border-radius: 14px;
+    padding: 14px 14px 12px;
+    cursor: pointer;
+    transition: transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
+    min-height: 104px;
+    width: 100%;
+    text-align: left;
+    color: inherit;
+    font: inherit;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  .v-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(110,168,255,0.4);
+    background: rgba(110,168,255,0.06);
+  }
+  .v-card.active {
+    border-color: rgba(110,168,255,0.7);
+    background: linear-gradient(180deg, rgba(110,168,255,0.14), rgba(139,124,255,0.08));
+    box-shadow: 0 0 0 1px rgba(110,168,255,0.18), 0 12px 36px rgba(110,168,255,0.12);
+  }
+  .v-card.planned {
+    opacity: 0.72;
+  }
+  .v-card.temporary {
+    border-style: dashed;
+    border-color: rgba(245, 185, 66, 0.45);
+    background: rgba(245, 185, 66, 0.06);
+  }
+  .v-card.temporary.active {
+    border-color: rgba(245, 185, 66, 0.85);
+    background: linear-gradient(180deg, rgba(245, 185, 66, 0.16), rgba(110, 168, 255, 0.08));
+  }
+  .v-card.temporary .v-dot {
+    border-color: var(--amber);
+    box-shadow: 0 0 0 4px rgba(245, 185, 66, 0.14);
+  }
+  .v-card.temporary.active .v-dot {
+    background: var(--amber);
+    box-shadow: 0 0 0 5px rgba(245, 185, 66, 0.2), 0 0 18px rgba(245, 185, 66, 0.45);
+  }
+  .v-card.temporary .v-label { color: var(--amber); }
+  .v-dot {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #1a2233; border: 2px solid var(--accent);
+    margin-bottom: 12px;
+    box-shadow: 0 0 0 4px rgba(110,168,255,0.12);
+  }
+  .v-card.active .v-dot {
+    background: var(--accent);
+    box-shadow: 0 0 0 5px rgba(110,168,255,0.2), 0 0 18px rgba(110,168,255,0.55);
+  }
+  .v-card.planned .v-dot { border-color: var(--text-mute); box-shadow: none; }
+  .v-label {
+    font-family: var(--mono); font-size: 11px; color: var(--accent);
+    letter-spacing: 0.04em; margin-bottom: 4px;
+  }
+  .v-title {
+    font-size: 14px; font-weight: 650; letter-spacing: -0.01em;
+    margin-bottom: 6px; line-height: 1.35;
+  }
+  .v-date { font-size: 11px; color: var(--text-mute); }
+  .v-delta {
+    margin-top: 8px; font-size: 11px; color: var(--text-dim);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+
+  /* ── Main stage ── */
+  .stage {
+    display: grid;
+    grid-template-columns: minmax(420px, 1fr) 8px var(--side-w, 360px);
+    gap: 0 12px;
+    min-height: 0;
+    padding: 0 28px 22px;
+    --side-w: 360px;
+  }
+  .stage-resizer {
+    width: 8px;
+    margin: 0;
+    border-radius: 999px;
+    cursor: col-resize;
+    position: relative;
+    align-self: stretch;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    z-index: 5;
+  }
+  .stage-resizer::before {
+    content: "";
+    position: absolute;
+    left: 2px; right: 2px; top: 12%; bottom: 12%;
+    border-radius: 999px;
+    background: rgba(148,163,184,0.18);
+    transition: background .15s ease, box-shadow .15s ease;
+  }
+  .stage-resizer:hover::before,
+  .stage-resizer.is-dragging::before {
+    background: rgba(110,168,255,0.55);
+    box-shadow: 0 0 12px rgba(110,168,255,0.35);
+  }
+  body.is-resizing-stage,
+  body.is-resizing-stage * { cursor: col-resize !important; user-select: none !important; }
+  @media (max-width: 1100px) {
+    body { overflow: auto; }
+    .app { height: auto; min-height: 100vh; }
+    .stage { grid-template-columns: 1fr; height: auto; }
+    .stage-resizer { display: none; }
+    .side { max-height: none; width: auto !important; }
+  }
+
+  .graph-panel {
+    position: relative;
+    min-height: 0;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.025), transparent 40%),
+      var(--bg-elevated);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+  }
+  .graph-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px; border-bottom: 1px solid var(--border); gap: 12px;
+  }
+  .graph-toolbar h2 {
+    font-size: 14px; font-weight: 650;
+  }
+  .graph-toolbar .sub {
+    font-size: 12px; color: var(--text-dim); margin-top: 2px;
+  }
+  .legend {
+    display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end;
+  }
+  .legend span {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--text-dim);
+  }
+  .legend i {
+    width: 10px; height: 10px; border-radius: 3px; display: inline-block;
+  }
+
+  .graph-canvas-wrap {
+    position: relative;
+    flex: 1;
+    min-height: 460px;
+    overflow: hidden;
+    touch-action: none;
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .graph-canvas-wrap.is-panning,
+  .graph-canvas-wrap.is-panning * { cursor: grabbing !important; }
+  #graphSvg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: inherit;
+  }
+  #graphSvg .node-group { cursor: pointer; }
+  .graph-controls {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    z-index: 3;
+  }
+  .graph-controls button {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: rgba(7, 9, 15, 0.78);
+    color: var(--text);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    transition: border-color .15s ease, background .15s ease, color .15s ease;
+  }
+  .graph-controls button:hover {
+    border-color: rgba(110,168,255,0.55);
+    background: rgba(110,168,255,0.12);
+    color: #fff;
+  }
+  .zoom-readout {
+    min-width: 34px;
+    text-align: center;
+    font-size: 10px;
+    font-family: var(--mono);
+    color: var(--text-dim);
+    padding: 4px 0 2px;
+  }
+  .graph-overlay {
+    position: absolute; left: 18px; bottom: 16px; right: 18px;
+    display: flex; gap: 10px; flex-wrap: wrap; pointer-events: none;
+    z-index: 2;
+  }
+  .pill {
+    pointer-events: none;
+    padding: 8px 12px; border-radius: 999px;
+    background: rgba(7,9,15,0.72);
+    border: 1px solid var(--border);
+    font-size: 12px; color: var(--text-dim);
+    backdrop-filter: blur(10px);
+  }
+  .pill strong { color: var(--text); font-weight: 600; }
+
+  /* SVG node styles via classes applied in JS */
+  .edge {
+    fill: none;
+    stroke: rgba(148, 163, 184, 0.22);
+    stroke-width: 1.6;
+    stroke-linecap: round;
+  }
+  .edge.active {
+    stroke: rgba(110, 168, 255, 0.55);
+    stroke-width: 2;
+  }
+  .edge.dim { stroke: rgba(148,163,184,0.08); }
+  .edge-label {
+    fill: var(--text-mute);
+    font-size: 10px;
+    font-family: var(--font);
+  }
+
+  .node-group { cursor: pointer; }
+  .node-group .node-shell {
+    fill: rgba(18, 24, 38, 0.95);
+    stroke: rgba(148,163,184,0.22);
+    stroke-width: 1.2;
+    transition: all .18s ease;
+  }
+  .node-group:hover .node-shell {
+    stroke: rgba(110,168,255,0.7);
+    filter: drop-shadow(0 0 10px rgba(110,168,255,0.25));
+  }
+  .node-group.selected .node-shell {
+    stroke: rgba(110,168,255,0.95);
+    stroke-width: 1.8;
+    filter: drop-shadow(0 0 16px rgba(110,168,255,0.35));
+  }
+  .node-group.changed .node-shell {
+    stroke: rgba(61, 214, 140, 0.85);
+    filter: drop-shadow(0 0 14px rgba(61, 214, 140, 0.28));
+  }
+  .node-group.changed.selected .node-shell {
+    stroke: rgba(110,168,255,0.95);
+  }
+  .node-group.born .node-shell {
+    stroke: rgba(245, 185, 66, 0.9);
+    filter: drop-shadow(0 0 14px rgba(245, 185, 66, 0.28));
+  }
+  .node-group.absent {
+    opacity: 0.18;
+    pointer-events: none;
+  }
+  .node-group.dim:not(.selected) { opacity: 0.28; }
+  .node-title {
+    fill: var(--text);
+    font-size: 13px;
+    font-weight: 650;
+    font-family: var(--font);
+  }
+  .node-sub {
+    fill: var(--text-dim);
+    font-size: 10.5px;
+    font-family: var(--font);
+  }
+  .node-badge {
+    font-size: 9px;
+    font-family: var(--mono);
+    font-weight: 600;
+  }
+  .node-icon-bg { opacity: 0.95; }
+
+  /* ── Side panel ── */
+  .side {
+    min-height: 0;
+    min-width: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .panel {
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: var(--bg-panel);
+    backdrop-filter: blur(16px);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .panel-head {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+  }
+  .panel-head h3 {
+    font-size: 14px; font-weight: 650;
+  }
+  .panel-head p {
+    font-size: 12px; color: var(--text-dim); margin-top: 3px;
+  }
+  .panel-body {
+    padding: 14px 16px 16px;
+    overflow: auto;
+  }
+  .detail-panel {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .detail-panel .panel-body {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .tag {
+    font-size: 11px; padding: 4px 8px; border-radius: 999px;
+    border: 1px solid var(--border); color: var(--text-dim);
+    background: rgba(255,255,255,0.02);
+  }
+  .tag.green { color: var(--green); border-color: rgba(61,214,140,0.35); background: rgba(61,214,140,0.08); }
+  .tag.amber { color: var(--amber); border-color: rgba(245,185,66,0.35); background: rgba(245,185,66,0.08); }
+  .tag.blue { color: var(--accent); border-color: rgba(110,168,255,0.35); background: rgba(110,168,255,0.08); }
+  .tag.purple { color: #b7a8ff; border-color: rgba(139,124,255,0.35); background: rgba(139,124,255,0.08); }
+
+  .section-label {
+    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-mute); margin: 14px 0 8px; font-weight: 600;
+  }
+  .section-label:first-child { margin-top: 0; }
+
+  .kv {
+    display: grid; gap: 8px;
+  }
+  .kv-item {
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.04);
+  }
+  .kv-item .k {
+    font-size: 11px; color: var(--text-mute); margin-bottom: 3px;
+  }
+  .kv-item .v {
+    font-size: 13px; color: var(--text); line-height: 1.45;
+  }
+
+  .change-list { display: grid; gap: 8px; }
+  .change-item {
+    display: grid;
+    grid-template-columns: 54px 1fr;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.04);
+    background: rgba(255,255,255,0.02);
+  }
+  .change-item .ver {
+    font-family: var(--mono); font-size: 11px; color: var(--accent);
+    padding-top: 2px;
+  }
+  .change-item .txt { font-size: 12.5px; color: var(--text-dim); line-height: 1.45; }
+  .change-item .txt b { color: var(--text); font-weight: 600; display: block; margin-bottom: 2px; }
+  .change-item.current {
+    border-color: rgba(110,168,255,0.28);
+    background: rgba(110,168,255,0.08);
+  }
+  .change-item.future { opacity: 0.45; }
+
+  .empty-detail {
+    height: 100%;
+    min-height: 220px;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    color: var(--text-dim);
+    padding: 24px;
+  }
+  .empty-detail .icon {
+    width: 48px; height: 48px; border-radius: 14px;
+    display: grid; place-items: center; margin: 0 auto 12px;
+    background: rgba(110,168,255,0.1);
+    border: 1px solid rgba(110,168,255,0.2);
+    color: var(--accent);
+  }
+  .empty-detail h4 { color: var(--text); font-size: 14px; margin-bottom: 6px; }
+  .empty-detail p { font-size: 12.5px; max-width: 240px; margin: 0 auto; color: var(--text-dim); }
+
+  .version-summary {
+    max-height: 180px;
+  }
+  .version-summary .panel-body {
+    max-height: 130px;
+    overflow: auto;
+  }
+  .bullet-list {
+    list-style: none; display: grid; gap: 7px;
+  }
+  .bullet-list li {
+    position: relative;
+    padding-left: 14px;
+    font-size: 12.5px;
+    color: var(--text-dim);
+  }
+  .bullet-list li::before {
+    content: "";
+    position: absolute; left: 0; top: 7px;
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px rgba(110,168,255,0.5);
+  }
+
+  .footer-note {
+    font-size: 11px; color: var(--text-mute); padding: 0 4px;
+  }
+
+  /* soft scrollbar */
+  .panel-body::-webkit-scrollbar,
+  .timeline::-webkit-scrollbar { width: 8px; height: 8px; }
+  .panel-body::-webkit-scrollbar-thumb,
+  .timeline::-webkit-scrollbar-thumb {
+    background: rgba(148,163,184,0.22); border-radius: 999px;
+  }
+
+  /* ── AI launcher & drawer ── */
+  .ai-fab {
+    position: fixed;
+    right: 22px;
+    bottom: 22px;
+    z-index: 40;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px 12px 12px;
+    border: 1px solid rgba(110,168,255,0.35);
+    border-radius: 999px;
+    background: linear-gradient(135deg, rgba(110,168,255,0.22), rgba(139,124,255,0.18));
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 650;
+    cursor: pointer;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.03);
+    backdrop-filter: blur(14px);
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  }
+  .ai-fab:hover {
+    transform: translateY(-1px);
+    border-color: rgba(110,168,255,0.7);
+    box-shadow: 0 16px 48px rgba(110,168,255,0.18);
+  }
+  .ai-fab-icon {
+    width: 28px; height: 28px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    box-shadow: 0 0 18px rgba(110,168,255,0.45);
+    font-size: 12px; font-weight: 800; color: #fff;
+  }
+  .ai-backdrop {
+    position: fixed; inset: 0; z-index: 45;
+    background: rgba(3,6,12,0.45);
+    opacity: 0; pointer-events: none;
+    transition: opacity .2s ease;
+  }
+  .ai-backdrop.open { opacity: 1; pointer-events: auto; }
+  .ai-drawer {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: min(420px, 100vw);
+    z-index: 50;
+    display: flex; flex-direction: column;
+    background: linear-gradient(180deg, rgba(14,18,30,0.98), rgba(8,11,18,0.98));
+    border-left: 1px solid var(--border);
+    box-shadow: -24px 0 80px rgba(0,0,0,0.45);
+    transform: translateX(104%);
+    transition: transform .22s ease;
+  }
+  .ai-drawer.open { transform: translateX(0); }
+  .ai-drawer-head {
+    padding: 18px 18px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  }
+  .ai-drawer-head h2 { font-size: 16px; font-weight: 700; letter-spacing: -0.02em; }
+  .ai-drawer-head p { font-size: 12px; color: var(--text-dim); margin-top: 4px; line-height: 1.45; }
+  .ai-close {
+    width: 32px; height: 32px; border-radius: 10px;
+    border: 1px solid var(--border); background: rgba(255,255,255,0.03);
+    color: var(--text-dim); cursor: pointer; font-size: 16px;
+  }
+  .ai-close:hover { color: var(--text); border-color: rgba(110,168,255,0.4); }
+  .ai-skills {
+    padding: 14px 16px 8px;
+    display: grid; gap: 8px;
+  }
+  .ai-skill {
+    text-align: left;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+    border-radius: 14px;
+    padding: 12px 12px 11px;
+    color: inherit; font: inherit; cursor: pointer;
+    transition: border-color .15s ease, background .15s ease, transform .15s ease;
+  }
+  .ai-skill:hover {
+    border-color: rgba(110,168,255,0.35);
+    background: rgba(110,168,255,0.06);
+  }
+  .ai-skill.active {
+    border-color: rgba(110,168,255,0.65);
+    background: linear-gradient(180deg, rgba(110,168,255,0.14), rgba(139,124,255,0.08));
+    box-shadow: 0 0 0 1px rgba(110,168,255,0.12);
+  }
+  .ai-skill .skill-top {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    margin-bottom: 4px;
+  }
+  .ai-skill .skill-name { font-size: 13px; font-weight: 700; }
+  .ai-skill .skill-tag {
+    font-size: 10px; font-family: var(--mono); color: var(--accent);
+    border: 1px solid rgba(110,168,255,0.28); border-radius: 999px; padding: 2px 7px;
+  }
+  .ai-skill .skill-desc { font-size: 12px; color: var(--text-dim); line-height: 1.45; }
+  .ai-auto-row {
+    padding: 4px 16px 10px;
+  }
+  .ai-auto-btn {
+    width: 100%;
+    border: 1px dashed rgba(61,214,140,0.35);
+    background: rgba(61,214,140,0.08);
+    color: var(--green);
+    border-radius: 12px;
+    padding: 10px 12px;
+    font: inherit; font-size: 12.5px; font-weight: 650;
+    cursor: pointer;
+  }
+  .ai-auto-btn:hover { background: rgba(61,214,140,0.14); }
+  .ai-chat {
+    flex: 1; min-height: 0;
+    display: flex; flex-direction: column;
+    border-top: 1px solid var(--border);
+  }
+  .ai-mode-bar {
+    padding: 10px 16px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    border-bottom: 1px solid rgba(148,163,184,0.08);
+  }
+  .ai-mode-bar .label { font-size: 11px; color: var(--text-mute); letter-spacing: .06em; text-transform: uppercase; }
+  .ai-mode-bar .value { font-size: 12px; color: var(--accent); font-weight: 650; }
+  .ai-messages {
+    flex: 1; min-height: 0; overflow: auto;
+    padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .ai-msg {
+    max-width: 92%;
+    padding: 10px 12px;
+    border-radius: 14px;
+    font-size: 13px; line-height: 1.5;
+    white-space: pre-wrap;
+  }
+  .ai-msg.user {
+    align-self: flex-end;
+    background: rgba(110,168,255,0.16);
+    border: 1px solid rgba(110,168,255,0.25);
+  }
+  .ai-msg.bot {
+    align-self: flex-start;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+  .ai-msg.bot strong { color: var(--text); font-weight: 650; }
+  .ai-msg .msg-meta {
+    display: block; font-size: 10px; color: var(--text-mute);
+    margin-bottom: 4px; font-family: var(--mono);
+  }
+  .ai-composer {
+    padding: 12px 14px 16px;
+    border-top: 1px solid var(--border);
+    display: grid; gap: 8px;
+  }
+  .ai-composer textarea {
+    width: 100%; min-height: 72px; resize: vertical;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: rgba(0,0,0,0.25);
+    color: var(--text);
+    padding: 10px 12px;
+    font: inherit; font-size: 13px; line-height: 1.45;
+    outline: none;
+  }
+  .ai-composer textarea:focus { border-color: rgba(110,168,255,0.5); }
+  .ai-composer-actions {
+    display: flex; gap: 8px; justify-content: space-between; align-items: center;
+  }
+  .ai-hint { font-size: 11px; color: var(--text-mute); }
+  .ai-send {
+    border: 0; border-radius: 10px;
+    padding: 9px 14px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #fff; font: inherit; font-size: 13px; font-weight: 700;
+    cursor: pointer;
+  }
+  .ai-send:disabled { opacity: .5; cursor: not-allowed; }
+  .ai-chips {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .ai-chip-btn {
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+    color: var(--text-dim);
+    border-radius: 999px;
+    padding: 5px 10px;
+    font: inherit; font-size: 11px;
+    cursor: pointer;
+  }
+  .ai-chip-btn:hover { color: var(--text); border-color: rgba(110,168,255,0.4); }
+  body.ai-open .ai-fab { opacity: 0; pointer-events: none; }
+
+  .lang-toggle {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.03);
+    gap: 2px;
+  }
+  .lang-toggle button {
+    border: 0;
+    background: transparent;
+    color: var(--text-dim);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 5px 10px;
+    border-radius: 999px;
+    cursor: pointer;
+    min-width: 40px;
+  }
+  .lang-toggle button.active {
+    background: linear-gradient(135deg, rgba(110,168,255,0.28), rgba(139,124,255,0.22));
+    color: #fff;
+    box-shadow: 0 0 0 1px rgba(110,168,255,0.25);
+  }
+  .lang-toggle button:hover:not(.active) { color: var(--text); }
+
+
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M5 8.5L12 4l7 4.5v7L12 20l-7-4.5v-7z" stroke="#fff" stroke-width="1.6"/>
+          <circle cx="12" cy="12" r="2.2" fill="#fff"/>
+        </svg>
+      </div>
+      <div>
+        <h1 id="projectName">项目架构图</h1>
+        <p id="projectSubtitle">加载架构与版本演进…</p>
+      </div>
+    </div>
+    <div class="top-meta">
+      <div class="chip"><span class="dot"></span><span data-i18n="chipGraph">Graph View</span></div>
+      <div class="chip"><span data-i18n="chipVersions">版本</span> <b id="statVersions">-</b></div>
+      <div class="chip"><span data-i18n="chipNodes">节点</span> <b id="statNodes">-</b></div>
+      <div class="chip"><span data-i18n="chipCurrent">当前</span> <b id="statCurrent">-</b></div>
+      <div class="lang-toggle" id="langToggle" title="Language / 语言">
+        <button type="button" data-lang="zh" class="active">中文</button>
+        <button type="button" data-lang="en">EN</button>
+      </div>
+      <div class="lang-toggle" id="projectToggle" style="margin-left:6px">
+        <button type="button" data-project="demo" class="active">会议室预定</button>
+        <button type="button" data-project="template">基础前后端</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="timeline-wrap">
+    <div class="timeline-card">
+      <div class="timeline-head">
+        <h2 data-i18n="timelineTitle">Version Timeline</h2>
+        <div class="timeline-hint" data-i18n="timelineHint">点击版本，查看节点在 Graph 上如何演进</div>
+      </div>
+      <div class="timeline" id="timeline"></div>
+    </div>
+  </section>
+
+  <main class="stage">
+    <section class="graph-panel">
+      <div class="graph-toolbar">
+        <div>
+          <h2 data-i18n="graphTitle">System Architecture Graph</h2>
+          <div class="sub" id="graphSub">关系图 · 点击节点查看介绍与版本变化</div>
+        </div>
+        <div class="legend">
+          <span><i style="background:#3dd68c"></i><span data-i18n="legendChanged">本版变化</span></span>
+          <span><i style="background:#f5b942"></i><span data-i18n="legendNew">本版新增</span></span>
+          <span><i style="background:#6ea8ff"></i><span data-i18n="legendSelected">选中</span></span>
+          <span><i style="background:#2a3345"></i><span data-i18n="legendAbsent">尚未出现</span></span>
+        </div>
+      </div>
+      <div class="graph-canvas-wrap" id="graphCanvas">
+        <svg id="graphSvg" viewBox="0 0 980 560" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="graph-controls" aria-label="画布缩放控制">
+          <button type="button" id="zoomInBtn" title="放大">+</button>
+          <div class="zoom-readout" id="zoomReadout">100%</div>
+          <button type="button" id="zoomOutBtn" title="缩小">−</button>
+          <button type="button" id="zoomResetBtn" title="重置视图">⟲</button>
+        </div>
+        <div class="graph-overlay">
+          <div class="pill"><span data-i18n="pillVersion">选中版本</span>：<strong id="overlayVersion">-</strong></div>
+          <div class="pill"><span data-i18n="pillChanged">变化节点</span>：<strong id="overlayChanged">-</strong></div>
+          <div class="pill" data-i18n="pillPanZoom">拖动画布平移 · 滚轮缩放</div>
+        </div>
+      </div>
+    </section>
+
+    <button class="stage-resizer" id="stageResizer" type="button" title="拖动调整图区域宽度" aria-label="调整图宽度"></button>
+
+    <aside class="side" id="sidePanel">
+      <section class="panel version-summary">
+        <div class="panel-head">
+          <div>
+            <h3 id="versionTitle" data-i18n-keep>版本摘要</h3>
+            <p id="versionDate">-</p>
+          </div>
+        </div>
+        <div class="panel-body">
+          <ul class="bullet-list" id="versionBullets"></ul>
+        </div>
+      </section>
+
+      <section class="panel detail-panel">
+        <div class="panel-head">
+          <div>
+            <h3 id="detailTitle">节点介绍</h3>
+            <p id="detailSub">从 Graph 选择一个节点</p>
+          </div>
+        </div>
+        <div class="panel-body" id="detailBody">
+          <div class="empty-detail">
+            <div>
+              <div class="icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.6"/>
+                  <path d="M12 8v5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                  <circle cx="12" cy="16" r="1" fill="currentColor"/>
+                </svg>
+              </div>
+              <h4>选择节点查看演进</h4>
+              <p>例如 Frontend：v1 基础页面 → v2 管理后台 → v3 设置与单次修改</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="footer-note" data-i18n="footerNote">数据来自 PROJECT.md / VERSIONS · 纯静态 Graph 视图</div>
+    </aside>
+  </main>
+</div>
+
+<button class="ai-fab" id="aiFab" type="button" title="Open AI / 打开 AI">
+  <span class="ai-fab-icon">AI</span>
+  <span data-i18n="aiFab">AI 助手</span>
+</button>
+
+<div class="ai-backdrop" id="aiBackdrop"></div>
+<aside class="ai-drawer" id="aiDrawer" aria-hidden="true">
+  <div class="ai-drawer-head">
+    <div>
+      <h2 data-i18n="aiDrawerTitle">Graph AI</h2>
+      <p data-i18n="aiDrawerDesc">Graph Engineer：选 skill，或选中无 graph 的 repo folder，让 AI 分析、写临时版本历史并创建图表。</p>
+    </div>
+    <button class="ai-close" id="aiClose" type="button" aria-label="关闭">×</button>
+  </div>
+
+  <div class="ai-skills" id="aiSkills"></div>
+
+  <div class="ai-auto-row">
+    <button class="ai-auto-btn" id="aiAutoBtn" type="button" data-i18n="aiAuto">让 AI 自己决定要做什么 / 改什么</button>
+  </div>
+
+  <div class="ai-repo-row" id="aiRepoRow">
+    <div class="ai-repo-box">
+      <div class="repo-label" data-i18n="aiRepoLabel">选中 repo folder</div>
+      <div class="repo-path" id="aiRepoPath" data-i18n="aiRepoEmpty">未选择 — 无 graph 的仓库可在此构建临时历史</div>
+      <div class="ai-repo-actions">
+        <button class="ai-repo-pick" id="aiRepoPick" type="button" data-i18n="aiRepoPick">选择文件夹</button>
+        <button class="ai-repo-clear" id="aiRepoClear" type="button" data-i18n="aiRepoClear">清除</button>
+      </div>
+      <div class="ai-repo-hint" data-i18n="aiRepoHint">触发链：选 repo → 问 AI → 分析 → 临时版本 + 写图（SKILL 04）</div>
+      <input type="file" id="aiRepoInput" webkitdirectory directory multiple />
+    </div>
+  </div>
+
+  <div class="ai-chat">
+    <div class="ai-mode-bar">
+      <span class="label" data-i18n="aiMode">当前模式</span>
+      <span class="value" id="aiModeLabel">未选择</span>
+    </div>
+    <div class="ai-messages" id="aiMessages"></div>
+    <div class="ai-composer">
+      <div class="ai-chips" id="aiChips"></div>
+      <textarea id="aiInput" placeholder="描述你的目标，例如：启动 v1 并画出前后端关系…"></textarea>
+      <div class="ai-composer-actions">
+        <span class="ai-hint" data-i18n="aiHint">HTML 触发点 · Demo 本地模拟分析/写图；接 agent 后写 draft 文件</span>
+        <button class="ai-send" id="aiSend" type="button" data-i18n="aiSend">发送</button>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<script>
+/**
+ * Architecture graph + version evolution.
+ * Nodes represent system parts; each version mutates node state/presence.
+ */
+
+const I18N = {
+  zh: {
+    chipGraph: "Graph View",
+    chipVersions: "版本",
+    chipNodes: "节点",
+    chipCurrent: "当前",
+    timelineTitle: "Version Timeline",
+    timelineHint: "点击版本，查看节点在 Graph 上如何演进",
+    graphTitle: "System Architecture Graph",
+    legendChanged: "本版变化",
+    legendNew: "本版新增",
+    legendSelected: "选中",
+    legendAbsent: "尚未出现",
+    pillVersion: "选中版本",
+    pillChanged: "变化节点",
+    pillPanZoom: "拖动画布平移 · 滚轮缩放",
+    footerNote: "数据来自 PROJECT.md / VERSIONS · 纯静态 Graph 视图",
+    aiFab: "AI 助手",
+    aiDrawerTitle: "Graph AI",
+    aiDrawerDesc: "Graph Engineer：选 skill，或选中无 graph 的 repo folder，让 AI 分析、写临时版本历史并创建图表。",
+    aiAuto: "让 AI 自己决定要做什么 / 改什么",
+    aiMode: "当前模式",
+    aiHint: "HTML 触发点 · Demo 本地模拟分析/写图；接 agent 后写 draft 文件",
+    aiSend: "发送",
+    aiModeNone: "未选择",
+    aiRepoLabel: "选中 repo folder",
+    aiRepoEmpty: "未选择 — 无 graph 的仓库可在此构建临时历史",
+    aiRepoPick: "选择文件夹",
+    aiRepoClear: "清除",
+    aiRepoHint: "触发链：选 repo → 问 AI → 分析 → 临时版本 + 写图（SKILL 04）",
+    tempTag: "TEMP",
+    skillRepoName: "选中 repo → 临时版本历史",
+    skillRepoDesc: "无 graph 的 repo：选中 folder，AI 分析并生成临时版本迭代，构建历史，同时写创建图表。",
+    skillRepoPh: "例如：分析这个老项目，用临时版本补出演进史并画图",
+    skillRepoP1: "从选中 repo 构建临时版本历史",
+    skillRepoP2: "只根据目录证据切片，不编造业务",
+    skillRepoP3: "分析后写图并标 temporary",
+    versionSummary: "版本摘要",
+    nodeIntro: "节点介绍",
+    pickNode: "从 Graph 选择一个节点",
+    planned: "计划中",
+    done: "已完成",
+    latest: "最新",
+    nodeChanges: "个节点变化",
+    stable: "本版稳定",
+    born: "本版新增",
+    changed: "本版演进",
+    whatIs: "这个部分是什么",
+    duty: "职责",
+    statusIn: "在 {v} 的状态",
+    noStructChange: "本版本无结构性变化，沿用既有能力。",
+    evolution: "跨版本如何演进",
+    noHistory: "暂无版本级变化记录",
+    relations: "关联关系",
+    inOut: "连出 / 连入",
+    none: "无",
+    emptyNodeTitle: "当前版本还没有这个节点",
+    emptyNodeDesc: "切换到更晚的版本，或点选图上高亮的节点。",
+    appearSince: "自 {v} 出现",
+    appearPlan: "自 v4 计划出现",
+    subtitle: "从 Graph 看关系，从 Timeline 看演进",
+    loadingSub: "加载架构与版本演进…",
+    resizeTip: "拖动调整 Graph 宽度",
+    zoomIn: "放大",
+    zoomOut: "缩小",
+    zoomReset: "重置视图",
+    projectFallback: "项目架构图",
+    skillBootstrapName: "启动版本 + 创建图",
+    skillBootstrapDesc: "项目刚开始：建立 v1 边界，生成第一张 System Architecture Graph 与节点说明。",
+    skillBootstrapPh: "例如：我们要做会议室预定，先画 员工 → Frontend → API → DB → LDAP",
+    skillBootstrapP1: "按现有 PROJECT 启动 v1 并建图",
+    skillBootstrapP2: "只保留最小可行架构 MVP",
+    skillBootstrapP3: "Frontend 先做 PC Web",
+    skillIterateName: "版本迭代 + 更新图",
+    skillIterateDesc: "有了新版本：在 Graph 上新增/演进节点，记录本版 delta，不重画整张图。",
+    skillIteratePh: "例如：v4 要加 Mobile Web，并更新 Frontend 与 API 关系",
+    skillIterateP1: "把当前规划做成下一版本",
+    skillIterateP2: "给 Frontend 继续加手机页",
+    skillIterateP3: "引入通知相关节点",
+    skillDiffName: "变化是什么 / 和以前有何不同",
+    skillDiffDesc: "给老板讲清楚：新功能为什么不是旧需求的延续，消除“这不就是小改一下”的幻觉。",
+    skillDiffPh: "例如：说明 v3 邮件通知为什么不是 v2 的小修补",
+    skillDiffP1: "对比当前版本和上一版",
+    skillDiffP2: "解释为什么要独立成新需求",
+    skillDiffP3: "用节点变化写老板可读摘要",
+    skillRepoName: "选中 repo → 临时版本历史",
+    skillRepoDesc: "无 graph 的 repo：选中 folder，AI 分析并生成临时版本迭代，构建历史，同时写创建图表。",
+    skillRepoPh: "例如：分析这个老项目，用临时版本补出演进史并画图",
+    skillRepoP1: "从选中 repo 构建临时版本历史",
+    skillRepoP2: "只根据目录证据切片，不编造业务",
+    skillRepoP3: "分析后写图并标 temporary",
+    aiWelcome: "已进入「{skill}」。\n可以直接发需求，或点下方快捷句。也可以点「让 AI 自己决定」。\n无 graph 的 repo：先选中 folder，再用 SKILL 04。",
+    edgeUse: "使用",
+    edgeAdmin: "管理员",
+    edgeMobile: "手机访问",
+    edgeView: "查看",
+    edgeRest: "REST",
+    edgeAdminApi: "管理 API",
+    edgeAgg: "聚合查询",
+    edgeAuth: "鉴权",
+    edgeRw: "读写",
+    edgeTask: "投递任务",
+    edgeQueue: "队列",
+    edgeSend: "发送",
+    edgeBroker: "broker"
+  },
+  en: {
+    chipGraph: "Graph View",
+    chipVersions: "Versions",
+    chipNodes: "Nodes",
+    chipCurrent: "Current",
+    timelineTitle: "Version Timeline",
+    timelineHint: "Click a version to see how graph nodes evolve",
+    graphTitle: "System Architecture Graph",
+    legendChanged: "Changed",
+    legendNew: "New",
+    legendSelected: "Selected",
+    legendAbsent: "Not yet",
+    pillVersion: "Version",
+    pillChanged: "Changed nodes",
+    pillPanZoom: "Drag to pan · Scroll to zoom",
+    footerNote: "Source: PROJECT.md / VERSIONS · static Graph view",
+    aiFab: "AI Assistant",
+    aiDrawerTitle: "Graph AI",
+    aiDrawerDesc: "Pick a skill, or let AI decide the next step — bootstrap graph, iterate, or explain diffs to leadership.",
+    aiAuto: "Let AI decide what to do / change",
+    aiMode: "Mode",
+    aiHint: "Demo: local simulated AI replies + graph updates",
+    aiSend: "Send",
+    aiModeNone: "None",
+    versionSummary: "Version Summary",
+    nodeIntro: "Node Detail",
+    pickNode: "Select a node on the graph",
+    planned: "Planned",
+    done: "Done",
+    latest: "Latest",
+    nodeChanges: "node changes",
+    stable: "Stable",
+    born: "New in version",
+    changed: "Evolved",
+    whatIs: "What this is",
+    duty: "Responsibility",
+    statusIn: "Status in {v}",
+    noStructChange: "No structural change in this version; capabilities carry over.",
+    evolution: "Evolution across versions",
+    noHistory: "No version-level change log yet",
+    relations: "Relations",
+    inOut: "Out / In",
+    none: "None",
+    emptyNodeTitle: "This node is not in the current version",
+    emptyNodeDesc: "Switch to a later version, or pick a highlighted node.",
+    appearSince: "Since {v}",
+    appearPlan: "Planned in v4",
+    subtitle: "Relations on the graph · evolution on the timeline",
+    loadingSub: "Loading architecture & versions…",
+    resizeTip: "Drag to resize graph width",
+    zoomIn: "Zoom in",
+    zoomOut: "Zoom out",
+    zoomReset: "Reset view",
+    projectFallback: "Architecture Graph",
+    skillBootstrapName: "Bootstrap version + create graph",
+    skillBootstrapDesc: "Greenfield: set v1 boundaries and generate the first architecture graph.",
+    skillBootstrapPh: "e.g. meeting-room booking: User → Frontend → API → DB → LDAP",
+    skillBootstrapP1: "Bootstrap v1 from PROJECT and build graph",
+    skillBootstrapP2: "Keep MVP architecture only",
+    skillBootstrapP3: "Frontend starts with PC Web",
+    skillIterateName: "Iterate version + update graph",
+    skillIterateDesc: "New version: add/evolve nodes, record delta, don’t redraw everything.",
+    skillIteratePh: "e.g. v4 adds Mobile Web and updates Frontend ↔ API",
+    skillIterateP1: "Turn current plan into next version",
+    skillIterateP2: "Add mobile page to Frontend family",
+    skillIterateP3: "Introduce notification nodes",
+    skillDiffName: "What changed / how it differs",
+    skillDiffDesc: "Explain to leadership why the new work is not a small patch on the old requirement.",
+    skillDiffPh: "e.g. why v3 email notify is not a minor fix on v2",
+    skillDiffP1: "Compare current vs previous version",
+    skillDiffP2: "Explain why it is an independent requirement",
+    skillDiffP3: "Write an exec-readable node delta",
+    skillRepoName: "Select repo → temporary history",
+    skillRepoDesc: "Repo with no graph: pick folder, AI analyzes, builds temporary version history, and writes the architecture chart.",
+    skillRepoPh: "e.g. analyze this legacy app, backfill evolution as temporary versions + graph",
+    skillRepoP1: "Build temporary version history from selected repo",
+    skillRepoP2: "Slice only from directory evidence, no fiction",
+    skillRepoP3: "After analysis write graph marked temporary",
+    aiWelcome: "Entered “{skill}”.\nSend a goal, use quick prompts, or let AI decide.\nNo graph yet? Pick a folder, then use SKILL 04.",
+    edgeUse: "uses",
+    edgeAdmin: "admin",
+    edgeMobile: "mobile",
+    edgeView: "view",
+    edgeRest: "REST",
+    edgeAdminApi: "admin API",
+    edgeAgg: "aggregate",
+    edgeAuth: "auth",
+    edgeRw: "R/W",
+    edgeTask: "enqueue",
+    edgeQueue: "queue",
+    edgeSend: "send",
+    edgeBroker: "broker"
+  }
+};
+
+function t(key, vars) {
+  const pack = I18N[state.lang] || I18N.zh;
+  let s = pack[key] != null ? pack[key] : (I18N.zh[key] != null ? I18N.zh[key] : key);
+  if (vars) {
+    Object.keys(vars).forEach(function(k) {
+      s = s.replace(new RegExp("\\{" + k + "\\}", "g"), vars[k]);
+    });
+  }
+  return s;
+}
+
+function tx(obj, field) {
+  if (!obj) return "";
+  if (state.lang === "en") {
+    const enKey = field + "En";
+    if (obj[enKey] != null && obj[enKey] !== "") return obj[enKey];
+  }
+  return obj[field] != null ? obj[field] : "";
+}
+
+
+const ARCH = {
+  project: {
+    name: "智能会议室预定系统",
+    subtitle: "从架构图看关系，从时间轴看演进"
+  },
+  nodes: [
+    {
+      id: "user",
+      label: "员工 / 用户",
+      layer: "actor",
+      x: 70, y: 250, w: 140, h: 78,
+      color: "#8b97ad",
+      blurb: "系统的使用者。通过 Web 查看会议室、发起预定、取消预定。",
+      since: 1
+    },
+    {
+      id: "frontend",
+      label: "Frontend",
+      layer: "client",
+      x: 280, y: 120, w: 168, h: 92,
+      color: "#6ea8ff",
+      blurb: "React + Ant Design。负责展示、表单与交互，不承载核心业务规则。",
+      since: 1
+    },
+    {
+      id: "admin_ui",
+      label: "Admin UI",
+      layer: "client",
+      x: 280, y: 280, w: 168, h: 84,
+      color: "#8b7cff",
+      blurb: "管理后台页面。会议室资源管理、强制取消预定。",
+      since: 2
+    },
+    {
+      id: "mobile",
+      label: "Mobile Web",
+      layer: "client",
+      x: 280, y: 420, w: 168, h: 78,
+      color: "#4fd1c5",
+      blurb: "面向手机的轻量前端页面（规划中）。复用同一套 API。",
+      since: 4,
+      planned: true
+    },
+    {
+      id: "api",
+      label: "FastAPI Backend",
+      layer: "service",
+      x: 530, y: 190, w: 180, h: 96,
+      color: "#3dd68c",
+      blurb: "业务 API 层。预定冲突检测、权限、重复会议与异常实例。",
+      since: 1
+    },
+    {
+      id: "auth",
+      label: "LDAP Auth",
+      layer: "service",
+      x: 530, y: 360, w: 180, h: 78,
+      color: "#f5b942",
+      blurb: "公司 LDAP 认证与权限角色（普通用户 / 管理员）。",
+      since: 1
+    },
+    {
+      id: "worker",
+      label: "Celery Worker",
+      layer: "async",
+      x: 530, y: 40, w: 180, h: 78,
+      color: "#f07178",
+      blurb: "异步任务执行器。邮件渲染与发送，避免阻塞 API。",
+      since: 3
+    },
+    {
+      id: "db",
+      label: "PostgreSQL",
+      layer: "data",
+      x: 790, y: 190, w: 150, h: 88,
+      color: "#6ea8ff",
+      blurb: "主数据存储。rooms / bookings / users，行级锁处理冲突。",
+      since: 1
+    },
+    {
+      id: "redis",
+      label: "Redis",
+      layer: "data",
+      x: 790, y: 40, w: 150, h: 78,
+      color: "#f07178",
+      blurb: "Celery broker 与任务队列。",
+      since: 3
+    },
+    {
+      id: "mail",
+      label: "SMTP / Mail",
+      layer: "external",
+      x: 790, y: 360, w: 150, h: 78,
+      color: "#f5b942",
+      blurb: "外部邮件通道。预定确认、取消、会前提醒。",
+      since: 3
+    },
+    {
+      id: "analytics",
+      label: "Analytics",
+      layer: "client",
+      x: 70, y: 420, w: 140, h: 78,
+      color: "#b7a8ff",
+      blurb: "数据看板（规划中）。会议室使用率与聚合查询。",
+      since: 4,
+      planned: true
+    }
+  ],
+  edges: [
+    { from: "user", to: "frontend", label: "使用" },
+    { from: "user", to: "admin_ui", label: "管理员", since: 2 },
+    { from: "user", to: "mobile", label: "手机访问", since: 4 },
+    { from: "user", to: "analytics", label: "查看", since: 4 },
+    { from: "frontend", to: "api", label: "REST" },
+    { from: "admin_ui", to: "api", label: "管理 API", since: 2 },
+    { from: "mobile", to: "api", label: "REST", since: 4 },
+    { from: "analytics", to: "api", label: "聚合查询", since: 4 },
+    { from: "api", to: "auth", label: "鉴权" },
+    { from: "api", to: "db", label: "读写" },
+    { from: "api", to: "worker", label: "投递任务", since: 3 },
+    { from: "worker", to: "redis", label: "队列", since: 3 },
+    { from: "worker", to: "mail", label: "发送", since: 3 },
+    { from: "api", to: "redis", label: "broker", since: 3 }
+  ],
+  versions: [
+    {
+      id: 1,
+      key: "v1",
+      title: "MVP：预定与查看",
+      date: "2026-07-10",
+      status: "done",
+      summary: "打通员工 → 前端 → API → 数据库的主路径，完成会议室列表、预定、取消与 LDAP 登录。",
+      bullets: [
+        "Frontend：会议室列表 / 预定表单 / 我的预定",
+        "Backend：bookings & rooms API + 冲突检测",
+        "PostgreSQL + LDAP 认证上线",
+        "Docker Compose 一键部署"
+      ],
+      focus: ["frontend", "api", "db", "auth", "user"],
+      nodeChanges: {
+        user: { status: "born", title: "员工入口", detail: "PC Web 使用者进入系统" },
+        frontend: {
+          status: "born",
+          title: "基础前端上线",
+          detail: "RoomList / BookingForm / MyBookings。只做展示与表单，业务规则在后端。"
+        },
+        api: {
+          status: "born",
+          title: "FastAPI 核心 API",
+          detail: "预定 CRUD + 会议室状态；SELECT FOR UPDATE 做冲突检测。"
+        },
+        auth: {
+          status: "born",
+          title: "LDAP 登录",
+          detail: "对接公司 LDAP，不自建账号体系。"
+        },
+        db: {
+          status: "born",
+          title: "三张核心表",
+          detail: "rooms / bookings / users。用行级锁保证并发预定正确。"
+        }
+      }
+    },
+    {
+      id: 2,
+      key: "v2",
+      title: "管理后台 + 重复会议",
+      date: "2026-07-22",
+      status: "done",
+      summary: "新增管理员角色与 Admin UI；重复会议整批事务写入。前端从「员工自助」扩展到「运营管理」。",
+      bullets: [
+        "Frontend 扩展：Admin 页面 + 重复规则选择器",
+        "权限中间件：普通用户 / 管理员",
+        "重复预定整体系列事务，冲突则全回滚",
+        "Alembic 迁移 permissions 字段"
+      ],
+      focus: ["admin_ui", "frontend", "api", "auth", "db"],
+      nodeChanges: {
+        frontend: {
+          status: "changed",
+          title: "前端能力扩展",
+          detail: "增加 RecurrencePicker；员工端支持每日/每周/每月重复预定。"
+        },
+        admin_ui: {
+          status: "born",
+          title: "新增管理后台",
+          detail: "会议室增删改、强制取消他人预定。对应新的用户角色入口。"
+        },
+        api: {
+          status: "changed",
+          title: "权限 + 重复会议 API",
+          detail: "permissions 中间件；recurrence 服务在同一事务中生成系列预定。"
+        },
+        auth: {
+          status: "changed",
+          title: "角色体系",
+          detail: "从“能登录”升级为“区分管理员 / 普通用户”。"
+        },
+        db: {
+          status: "changed",
+          title: "schema 演进",
+          detail: "Alembic 增加 permissions 字段，支持管理操作。"
+        }
+      }
+    },
+    {
+      id: 3,
+      key: "v3",
+      title: "邮件通知 + 单次修改",
+      date: "2026-08-01",
+      status: "done",
+      summary: "引入异步基础设施。前端增加设置页与单次修改；后端拆出 Worker / Redis / 邮件通道。",
+      bullets: [
+        "Frontend：EditBooking + 通知开关 Settings",
+        "新增 Celery Worker 与 Redis 队列",
+        "邮件：确认 / 取消 / 会前 15 分钟提醒",
+        "booking_exceptions 支持修改重复会议中的单次"
+      ],
+      focus: ["frontend", "worker", "redis", "mail", "api", "db"],
+      nodeChanges: {
+        frontend: {
+          status: "changed",
+          title: "前端继续加页面",
+          detail: "EditBooking 修改系列中的单次；Settings 控制是否接收邮件。仍是同一前端应用内演进。"
+        },
+        api: {
+          status: "changed",
+          title: "异步投递 + 异常实例",
+          detail: "创建/取消预定后把通知任务丢给 Worker；支持 booking_exceptions。"
+        },
+        worker: {
+          status: "born",
+          title: "Celery 上线",
+          detail: "邮件渲染与发送异步化；worker_max_tasks_per_child 防止内存泄漏。"
+        },
+        redis: {
+          status: "born",
+          title: "消息队列",
+          detail: "作为 Celery broker，承接高峰预定产生的通知任务。"
+        },
+        mail: {
+          status: "born",
+          title: "SMTP 通道",
+          detail: "外部邮件服务。确认信、取消信、会前提醒。"
+        },
+        db: {
+          status: "changed",
+          title: "异常实例表",
+          detail: "新增 booking_exceptions，单次修改不影响整个重复系列。"
+        }
+      }
+    },
+    {
+      id: 4,
+      key: "v4",
+      title: "数据看板 + 移动端",
+      date: "计划中",
+      status: "planned",
+      summary: "在既有 API 上扩展：领导侧 Analytics，员工侧 Mobile Web。前端从 PC 管理走向多端触达。",
+      bullets: [
+        "Frontend 家族扩展：Mobile Web 新页面",
+        "Analytics：会议室使用率与聚合查询",
+        "复用 v3 异步与权限基础，不重做主链路",
+        "钉钉集成评估放到后续版本"
+      ],
+      focus: ["mobile", "analytics", "frontend", "api"],
+      nodeChanges: {
+        frontend: {
+          status: "changed",
+          title: "PC 前端保持主干",
+          detail: "继续承载完整功能；与 Mobile 分流，避免一套页面硬适配所有端。"
+        },
+        mobile: {
+          status: "born",
+          title: "新增手机前端页面",
+          detail: "轻量预定/查看页，走同一 FastAPI。对应“front 继续 + 一个新前端页面 for 手机”。"
+        },
+        analytics: {
+          status: "born",
+          title: "数据看板",
+          detail: "给领导看使用率。独立模块，和邮件系统无直接耦合。"
+        },
+        api: {
+          status: "changed",
+          title: "聚合查询 API",
+          detail: "为看板提供统计接口；Mobile 复用既有预定 API。"
+        }
+      }
+    }
+  ]
+};
+
+const GRAPH_W = 980;
+const GRAPH_H = 560;
+const ZOOM_MIN = 0.4;
+const ZOOM_MAX = 3;
+
+
+// English overlays (zh keeps professional CN/EN mix in base fields)
+const ARCH_EN = {
+  project: {
+    name: "Smart Meeting Room Booking",
+    subtitle: "Relations on the graph · evolution on the timeline"
+  },
+  nodes: {
+    user: { label: "Employee / User", blurb: "End users. Browse rooms, create and cancel bookings on Web." },
+    frontend: { label: "Frontend", blurb: "React + Ant Design. Presentation & forms only — business rules stay on backend." },
+    admin_ui: { label: "Admin UI", blurb: "Ops console: room CRUD and force-cancel bookings." },
+    mobile: { label: "Mobile Web", blurb: "Lightweight mobile pages (planned). Same API surface." },
+    api: { label: "FastAPI Backend", blurb: "Business API: conflict detection, permissions, recurrence & exceptions." },
+    auth: { label: "LDAP Auth", blurb: "Corporate LDAP auth and roles (user / admin)." },
+    worker: { label: "Celery Worker", blurb: "Async workers for email render/send without blocking API." },
+    db: { label: "PostgreSQL", blurb: "Primary store: rooms / bookings / users with row-level locks." },
+    redis: { label: "Redis", blurb: "Celery broker and task queue." },
+    mail: { label: "SMTP / Mail", blurb: "Outbound mail: confirm, cancel, pre-meeting reminder." },
+    analytics: { label: "Analytics", blurb: "Usage dashboard (planned): occupancy aggregates." }
+  },
+  edges: {
+    "user>frontend": "uses",
+    "user>admin_ui": "admin",
+    "user>mobile": "mobile",
+    "user>analytics": "view",
+    "frontend>api": "REST",
+    "admin_ui>api": "admin API",
+    "mobile>api": "REST",
+    "analytics>api": "aggregate",
+    "api>auth": "auth",
+    "api>db": "R/W",
+    "api>worker": "enqueue",
+    "worker>redis": "queue",
+    "worker>mail": "send",
+    "api>redis": "broker"
+  },
+  versions: {
+    1: {
+      title: "MVP: booking & browse",
+      summary: "Main path User → Frontend → API → DB with room list, booking, cancel, LDAP login.",
+      bullets: [
+        "Frontend: room list / booking form / my bookings",
+        "Backend: bookings & rooms API + conflict detection",
+        "PostgreSQL + LDAP auth online",
+        "Docker Compose one-shot deploy"
+      ],
+      nodeChanges: {
+        user: { title: "User entry", detail: "PC Web users enter the system" },
+        frontend: { title: "Base Frontend live", detail: "RoomList / BookingForm / MyBookings. UI only; rules on backend." },
+        api: { title: "Core FastAPI", detail: "Booking CRUD + room status; SELECT FOR UPDATE for conflicts." },
+        auth: { title: "LDAP login", detail: "Corporate LDAP — no home-grown accounts." },
+        db: { title: "Three core tables", detail: "rooms / bookings / users with row locks." }
+      }
+    },
+    2: {
+      title: "Admin console + recurrence",
+      summary: "Admin role + Admin UI; recurring bookings as one transaction. Frontend expands from self-serve to ops.",
+      bullets: [
+        "Frontend: Admin pages + recurrence picker",
+        "Permission middleware: user / admin",
+        "Recurring series is atomic — conflict rolls all back",
+        "Alembic migration for permissions"
+      ],
+      nodeChanges: {
+        frontend: { title: "Frontend capability expand", detail: "RecurrencePicker; daily/weekly/monthly series for employees." },
+        admin_ui: { title: "Admin UI added", detail: "Room CRUD + force-cancel. New role entry." },
+        api: { title: "Permissions + recurrence API", detail: "permissions middleware; recurrence service in one TX." },
+        auth: { title: "Role model", detail: "From “can login” to user vs admin." },
+        db: { title: "Schema evolution", detail: "Alembic adds permissions field." }
+      }
+    },
+    3: {
+      title: "Email notify + single edit",
+      summary: "Async infra lands. Frontend adds settings & single-instance edit; Worker / Redis / Mail split out.",
+      bullets: [
+        "Frontend: EditBooking + notification Settings",
+        "Celery Worker + Redis queue",
+        "Mail: confirm / cancel / T-15 reminder",
+        "booking_exceptions for single occurrence edits"
+      ],
+      nodeChanges: {
+        frontend: { title: "More Frontend pages", detail: "EditBooking for one occurrence; Settings toggles mail. Same app." },
+        api: { title: "Async dispatch + exceptions", detail: "Notify tasks to Worker; booking_exceptions supported." },
+        worker: { title: "Celery online", detail: "Async mail; max_tasks_per_child avoids leaks." },
+        redis: { title: "Message queue", detail: "Celery broker for peak booking notify load." },
+        mail: { title: "SMTP channel", detail: "External mail: confirm, cancel, reminder." },
+        db: { title: "Exception table", detail: "booking_exceptions — edit one without breaking series." }
+      }
+    },
+    4: {
+      title: "Analytics + Mobile",
+      summary: "Extend on existing API: Analytics for leadership, Mobile Web for employees. Multi-surface Frontend family.",
+      bullets: [
+        "Frontend family: Mobile Web pages",
+        "Analytics: occupancy aggregates",
+        "Reuse v3 async + auth — no main-path rewrite",
+        "DingTalk integration deferred"
+      ],
+      nodeChanges: {
+        frontend: { title: "PC Frontend stays trunk", detail: "Full feature on PC; Mobile splits to avoid one-size pages." },
+        mobile: { title: "Mobile Web added", detail: "Light book/view pages on same FastAPI." },
+        analytics: { title: "Analytics", detail: "Usage board for leadership; decoupled from mail." },
+        api: { title: "Aggregate query API", detail: "Stats for dashboard; Mobile reuses booking APIs." }
+      }
+    }
+  }
+};
+
+const TEMPLATE_ARCH = {
+  project: {
+    name: "基础前后端 AI 聊天",
+    subtitle: "最简全栈模板 · 可替换 AI 适配器"
+  },
+  nodes: [
+    {
+      id: "user",
+      label: "用户",
+      layer: "actor",
+      x: 70, y: 250, w: 140, h: 78,
+      color: "#8b97ad",
+      blurb: "通过浏览器打开前端页面，与 AI 对话。",
+      since: 1
+    },
+    {
+      id: "frontend",
+      label: "Frontend",
+      layer: "client",
+      x: 280, y: 120, w: 168, h: 92,
+      color: "#6ea8ff",
+      blurb: "HTML + CSS + Vanilla JS。零依赖，纯静态聊天 UI，支持普通/流式两种模式。",
+      since: 1
+    },
+    {
+      id: "api",
+      label: "FastAPI",
+      layer: "service",
+      x: 530, y: 190, w: 180, h: 96,
+      color: "#3dd68c",
+      blurb: "异步 API。接收消息，路由到 AI 适配器，支持流式 SSE 输出。",
+      since: 1
+    },
+    {
+      id: "ai_adapter",
+      label: "AI Adapter",
+      layer: "service",
+      x: 770, y: 90, w: 168, h: 84,
+      color: "#8b7cff",
+      blurb: "统一接口 BaseAIAdapter。通过环境变量 AI_BACKEND 切换实现。",
+      since: 1
+    },
+    {
+      id: "openai_direct",
+      label: "OpenAI 直连",
+      layer: "external",
+      x: 770, y: 240, w: 168, h: 78,
+      color: "#3dd68c",
+      blurb: "通过 httpx 直接调用 OpenAI 兼容 API（chat + stream）。",
+      since: 1
+    },
+    {
+      id: "langchain",
+      label: "LangChain",
+      layer: "external",
+      x: 770, y: 370, w: 168, h: 78,
+      color: "#f5b942",
+      blurb: "通过 LangChain ChatOpenAI 调用，方便后续扩展 Chain/Agent/Tool。",
+      since: 1
+    }
+  ],
+  edges: [
+    { from: "user", to: "frontend", label: "打开页面" },
+    { from: "frontend", to: "api", label: "POST /api/chat" },
+    { from: "api", to: "ai_adapter", label: "adapter.chat()" },
+    { from: "ai_adapter", to: "openai_direct", label: "httpx 直连" },
+    { from: "ai_adapter", to: "langchain", label: "LangChain" }
+  ],
+  versions: [
+    {
+      id: 1,
+      key: "v1",
+      title: "基线：基础前后端 + 双 AI 模式",
+      date: "2026-08-03",
+      status: "done",
+      summary: "打通前端→后端→AI适配器→LLM 主链路。支持 OpenAI 直连和 LangChain 两种模式，流式与非流式。",
+      bullets: [
+        "Frontend：纯 HTML 聊天 UI，零依赖",
+        "Backend：FastAPI + AI Adapter 抽象层",
+        "OpenAI 直连：httpx 调用兼容 API",
+        "LangChain：ChatOpenAI 集成",
+        "通过 AI_BACKEND 环境变量一键切换"
+      ],
+      focus: ["frontend", "api", "ai_adapter"],
+      nodeChanges: {
+        user: { status: "born", title: "用户入口", detail: "浏览器打开 index.html，无需安装。" },
+        frontend: { status: "born", title: "聊天 UI 上线", detail: "聊天气泡 + 流式显示 + 快捷提示按钮。" },
+        api: { status: "born", title: "FastAPI 服务", detail: "/api/chat 接收消息，返回 AI 回复；支持 SSE 流式。" },
+        ai_adapter: { status: "born", title: "适配器接口", detail: "BaseAIAdapter 抽象 chat() / stream()，get_adapter() 工厂切换。" },
+        openai_direct: { status: "born", title: "OpenAI 直连通道", detail: "httpx 异步调用 OpenAI 兼容 API，支持 stream 流式。" },
+        langchain: { status: "born", title: "LangChain 通道", detail: "langchain_openai.ChatOpenAI 封装，方便扩展 Chain/Agent。" }
+      }
+    }
+  ]
+};
+
+const TEMPLATE_ARCH_EN = {
+  project: {
+    name: "Basic Fullstack AI Chat",
+    subtitle: "Minimal fullstack template · swappable AI adapter"
+  },
+  nodes: {
+    user: { label: "User", blurb: "Open index.html in browser, chat with AI." },
+    frontend: { label: "Frontend", blurb: "HTML + CSS + Vanilla JS. Zero-dependency chat UI, normal + streaming modes." },
+    api: { label: "FastAPI", blurb: "Async API. Receives messages, routes to AI adapter, supports SSE streaming." },
+    ai_adapter: { label: "AI Adapter", blurb: "Unified BaseAIAdapter interface. Swappable via AI_BACKEND env var." },
+    openai_direct: { label: "OpenAI Direct", blurb: "Direct httpx call to OpenAI-compatible API (chat + stream)." },
+    langchain: { label: "LangChain", blurb: "LangChain ChatOpenAI wrapper for future Chain/Agent/Tool extensions." }
+  },
+  edges: {
+    "user>frontend": "opens",
+    "frontend>api": "POST /api/chat",
+    "api>ai_adapter": "adapter.chat()",
+    "ai_adapter>openai_direct": "httpx direct",
+    "ai_adapter>langchain": "LangChain"
+  },
+  versions: {
+    1: {
+      title: "Baseline: fullstack + dual AI",
+      summary: "Complete User→Frontend→API→Adapter→LLM chain. OpenAI direct + LangChain, streaming + non-streaming.",
+      bullets: [
+        "Frontend: pure HTML chat UI, zero deps",
+        "Backend: FastAPI + AI Adapter abstraction",
+        "OpenAI direct: httpx to compatible API",
+        "LangChain: ChatOpenAI integration",
+        "Switch via AI_BACKEND env var"
+      ],
+      nodeChanges: {
+        user: { title: "User entry", detail: "Open index.html in browser, no install needed." },
+        frontend: { title: "Chat UI live", detail: "Bubbles + streaming display + quick prompts." },
+        api: { title: "FastAPI service", detail: "/api/chat accepts messages, returns AI reply; SSE streaming support." },
+        ai_adapter: { title: "Adapter interface", detail: "BaseAIAdapter with chat()/stream(), get_adapter() factory." },
+        openai_direct: { title: "OpenAI direct channel", detail: "httpx async call to OpenAI-compatible API with stream." },
+        langchain: { title: "LangChain channel", detail: "langchain_openai.ChatOpenAI wrapper for Chain/Agent expansion." }
+      }
+    }
+  }
+};
+
+function getA() {
+  return (state.projectId === "template") ? TEMPLATE_ARCH : ARCH;
+}
+
+function getAEn() {
+  return (state.projectId === "template") ? TEMPLATE_ARCH_EN : ARCH_EN;
+}
+
+function localizedNode(node) {
+  if (!node) return node;
+  if (state.lang !== "en") return node;
+  const en = getAEn().nodes[node.id] || {};
+  return Object.assign({}, node, {
+    label: en.label || node.label,
+    blurb: en.blurb || node.blurb
+  });
+}
+
+function localizedVersion(v) {
+  if (!v) return v;
+  if (state.lang !== "en") return v;
+  const en = getAEn().versions[v.id] || {};
+  const base = Object.assign({}, v, {
+    title: en.title || v.title,
+    summary: en.summary || v.summary,
+    bullets: en.bullets || v.bullets
+  });
+  if (en.nodeChanges && v.nodeChanges) {
+    const nc = {};
+    Object.keys(v.nodeChanges).forEach(function(id) {
+      const src = v.nodeChanges[id];
+      const e = en.nodeChanges[id] || {};
+      nc[id] = Object.assign({}, src, {
+        title: e.title || src.title,
+        detail: e.detail || src.detail
+      });
+    });
+    base.nodeChanges = nc;
+  }
+  return base;
+}
+
+function localizedEdgeLabel(edge) {
+  if (state.lang !== "en") return edge.label || "";
+  const key = edge.from + ">" + edge.to;
+  return getAEn().edges[key] || edge.label || "";
+}
+
+function nodeChange(nodeId, versionId) {
+  const v = localizedVersion(versionById(versionId));
+  return (v.nodeChanges && v.nodeChanges[nodeId]) || null;
+}
+
+function nodeHistory(nodeId) {
+  return getA().versions
+    .map(function(raw) {
+      const v = localizedVersion(raw);
+      const c = v.nodeChanges && v.nodeChanges[nodeId];
+      if (!c) return null;
+      return { version: v, change: c };
+    })
+    .filter(Boolean);
+}
+
+
+const state = {
+  projectId: (localStorage.getItem("loopy.projectId") || "template"),
+  versionId: 3,
+  selectedNodeId: "frontend",
+  lang: (localStorage.getItem("loopy.lang") === "en" ? "en" : "zh"),
+  docs: { project: null, versions: {}, requirements: null },
+  // viewBox camera: x/y is top-left, k is zoom (1 = 100%)
+  cam: { x: 0, y: 0, k: 1 },
+  panZoomBound: false
+};
+
+const drag = {
+  on: false,
+  moved: false,
+  pid: null,
+  sx: 0,
+  sy: 0,
+  ox: 0,
+  oy: 0,
+  targetNode: null
+};
+
+function $(id) { return document.getElementById(id); }
+
+function versionById(id) {
+  return getA().versions.find(v => v.id === id) || getA().versions[0];
+}
+
+function nodeById(id) {
+  return getA().nodes.find(n => n.id === id);
+}
+
+function isNodePresent(node, versionId) {
+  return node.since <= versionId;
+}
+
+function isEdgePresent(edge, versionId) {
+  return (edge.since || 1) <= versionId;
+}
+
+function anchor(node, side) {
+  const cx = node.x + node.w / 2;
+  const cy = node.y + node.h / 2;
+  if (side === "left") return { x: node.x, y: cy };
+  if (side === "right") return { x: node.x + node.w, y: cy };
+  if (side === "top") return { x: cx, y: node.y };
+  if (side === "bottom") return { x: cx, y: node.y + node.h };
+  return { x: cx, y: cy };
+}
+
+function pickSides(a, b) {
+  const acx = a.x + a.w / 2, acy = a.y + a.h / 2;
+  const bcx = b.x + b.w / 2, bcy = b.y + b.h / 2;
+  const dx = bcx - acx, dy = bcy - acy;
+  if (Math.abs(dx) > Math.abs(dy)) {
+    return dx > 0 ? ["right", "left"] : ["left", "right"];
+  }
+  return dy > 0 ? ["bottom", "top"] : ["top", "bottom"];
+}
+
+function curvePath(x1, y1, x2, y2) {
+  const dx = Math.abs(x2 - x1);
+  const dy = Math.abs(y2 - y1);
+  const bend = Math.max(40, Math.min(120, (dx + dy) * 0.35));
+  let c1x = x1, c1y = y1, c2x = x2, c2y = y2;
+  if (Math.abs(x2 - x1) >= Math.abs(y2 - y1)) {
+    c1x = x1 + Math.sign(x2 - x1 || 1) * bend;
+    c2x = x2 - Math.sign(x2 - x1 || 1) * bend;
+  } else {
+    c1y = y1 + Math.sign(y2 - y1 || 1) * bend;
+    c2y = y2 - Math.sign(y2 - y1 || 1) * bend;
+  }
+  return `M ${x1} ${y1} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${x2} ${y2}`;
+}
+
+function renderTimeline() {
+  const root = $("timeline");
+  root.innerHTML = getA().versions.map(function(raw) {
+    const v = localizedVersion(raw);
+    const active = raw.id === state.versionId ? "active" : "";
+    const planned = raw.status === "planned" ? "planned" : "";
+    const temporary = raw.status === "temporary" ? "temporary" : "";
+    const deltaCount = Object.keys(raw.nodeChanges || {}).length;
+    const planTag = raw.status === "planned" ? " · PLAN" : (raw.status === "temporary" ? " · " + t("tempTag") : "");
+    return ''
+      + '<button class="v-card ' + active + ' ' + planned + ' ' + temporary + '" data-version="' + raw.id + '" type="button">'
+      +   '<div class="v-dot"></div>'
+      +   '<div class="v-label">' + v.key + planTag + '</div>'
+      +   '<div class="v-title">' + v.title + '</div>'
+      +   '<div class="v-date">' + v.date + '</div>'
+      +   '<div class="v-delta">' + deltaCount + ' ' + t("nodeChanges") + ' · ' + v.summary + '</div>'
+      + '</button>';
+  }).join("");
+
+  root.querySelectorAll(".v-card").forEach(function(el) {
+    el.addEventListener("click", function() {
+      state.versionId = Number(el.dataset.version);
+      const v = versionById(state.versionId);
+      const selected = nodeById(state.selectedNodeId);
+      if (!selected || !isNodePresent(selected, state.versionId)) {
+        state.selectedNodeId = (v.focus && v.focus[0]) || (getA().nodes.find(function(n) { return isNodePresent(n, state.versionId); }) || {}).id;
+      }
+      renderAll();
+    });
+  });
+}
+
+function clamp(n, a, b) {
+  return Math.max(a, Math.min(b, n));
+}
+
+function applyCamera() {
+  const svg = $("graphSvg");
+  if (!svg) return;
+  const k = clamp(state.cam.k, ZOOM_MIN, ZOOM_MAX);
+  state.cam.k = k;
+  const w = GRAPH_W / k;
+  const h = GRAPH_H / k;
+  svg.setAttribute("viewBox", state.cam.x + " " + state.cam.y + " " + w + " " + h);
+  const readout = $("zoomReadout");
+  if (readout) readout.textContent = Math.round(k * 100) + "%";
+}
+
+function resetCamera() {
+  state.cam = { x: 0, y: 0, k: 1 };
+  applyCamera();
+}
+
+function clientToWorld(clientX, clientY) {
+  const svg = $("graphSvg");
+  const rect = svg.getBoundingClientRect();
+  const w = GRAPH_W / state.cam.k;
+  const h = GRAPH_H / state.cam.k;
+  return {
+    x: state.cam.x + ((clientX - rect.left) / Math.max(rect.width, 1)) * w,
+    y: state.cam.y + ((clientY - rect.top) / Math.max(rect.height, 1)) * h
+  };
+}
+
+function zoomAtClient(clientX, clientY, nextK) {
+  const k0 = state.cam.k;
+  const k1 = clamp(nextK, ZOOM_MIN, ZOOM_MAX);
+  if (Math.abs(k1 - k0) < 0.0001) return;
+  const before = clientToWorld(clientX, clientY);
+  state.cam.k = k1;
+  const after = clientToWorld(clientX, clientY);
+  state.cam.x += before.x - after.x;
+  state.cam.y += before.y - after.y;
+  applyCamera();
+}
+
+function zoomByButton(factor) {
+  const wrap = $("graphCanvas");
+  if (!wrap) return;
+  const r = wrap.getBoundingClientRect();
+  zoomAtClient(r.left + r.width / 2, r.top + r.height / 2, state.cam.k * factor);
+}
+
+function bindPanZoomOnce() {
+  if (state.panZoomBound) return;
+  const wrap = $("graphCanvas");
+  const svg = $("graphSvg");
+  if (!wrap || !svg) return;
+  state.panZoomBound = true;
+
+  wrap.addEventListener("pointerdown", function(e) {
+    if (e.target.closest && e.target.closest(".graph-controls")) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    drag.on = true;
+    drag.moved = false;
+    drag.pid = e.pointerId;
+    drag.sx = e.clientX;
+    drag.sy = e.clientY;
+    drag.ox = state.cam.x;
+    drag.oy = state.cam.y;
+    drag.targetNode = null;
+    const nodeEl = e.target.closest ? e.target.closest(".node-group") : null;
+    if (nodeEl) drag.targetNode = nodeEl.getAttribute("data-node");
+    wrap.classList.add("is-panning");
+    try { wrap.setPointerCapture(e.pointerId); } catch (err) {}
+    e.preventDefault();
+  });
+
+  wrap.addEventListener("pointermove", function(e) {
+    if (!drag.on || e.pointerId !== drag.pid) return;
+    const rect = svg.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const dxPx = e.clientX - drag.sx;
+    const dyPx = e.clientY - drag.sy;
+    if (!drag.moved && (Math.abs(dxPx) > 3 || Math.abs(dyPx) > 3)) drag.moved = true;
+    if (!drag.moved) return;
+    const scaleX = (GRAPH_W / state.cam.k) / rect.width;
+    const scaleY = (GRAPH_H / state.cam.k) / rect.height;
+    state.cam.x = drag.ox - dxPx * scaleX;
+    state.cam.y = drag.oy - dyPx * scaleY;
+    applyCamera();
+    e.preventDefault();
+  });
+
+  function endDrag(e) {
+    if (!drag.on) return;
+    if (e && e.pointerId != null && drag.pid != null && e.pointerId !== drag.pid) return;
+    const wasMoved = drag.moved;
+    const nodeId = drag.targetNode;
+    drag.on = false;
+    wrap.classList.remove("is-panning");
+    try { if (drag.pid != null) wrap.releasePointerCapture(drag.pid); } catch (err) {}
+    drag.pid = null;
+    drag.targetNode = null;
+
+    // click (not pan): select node under pointer / remembered target
+    if (!wasMoved) {
+      let id = nodeId;
+      if (!id) {
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        const g = el && el.closest ? el.closest(".node-group") : null;
+        if (g) id = g.getAttribute("data-node");
+      }
+      if (id) selectNode(id);
+    }
+    drag.moved = false;
+  }
+
+  wrap.addEventListener("pointerup", endDrag);
+  wrap.addEventListener("pointercancel", endDrag);
+  wrap.addEventListener("lostpointercapture", function() {
+    drag.on = false;
+    wrap.classList.remove("is-panning");
+  });
+
+  wrap.addEventListener("wheel", function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+    zoomAtClient(e.clientX, e.clientY, state.cam.k * factor);
+  }, { passive: false });
+
+  wrap.addEventListener("gesturestart", function(e) { e.preventDefault(); });
+  wrap.addEventListener("gesturechange", function(e) { e.preventDefault(); });
+
+  const zin = $("zoomInBtn");
+  const zout = $("zoomOutBtn");
+  const zreset = $("zoomResetBtn");
+  if (zin) zin.addEventListener("click", function(e) { e.stopPropagation(); zoomByButton(1.2); });
+  if (zout) zout.addEventListener("click", function(e) { e.stopPropagation(); zoomByButton(1 / 1.2); });
+  if (zreset) zreset.addEventListener("click", function(e) { e.stopPropagation(); resetCamera(); });
+}
+
+function ensureGraphScaffold() {
+  const svg = $("graphSvg");
+  if (!svg) return null;
+  let content = document.getElementById("graphContent");
+  if (content && svg.contains(content)) return content;
+
+  svg.innerHTML = ""
+    + '<defs>'
+    +   '<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">'
+    +     '<path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="rgba(148,163,184,0.45)"></path>'
+    +   '</marker>'
+    +   '<marker id="arrowActive" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">'
+    +     '<path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="rgba(110,168,255,0.8)"></path>'
+    +   '</marker>'
+    +   '<pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">'
+    +     '<path d="M 28 0 L 0 0 0 28" fill="none" stroke="rgba(148,163,184,0.05)" stroke-width="1"/>'
+    +   '</pattern>'
+    + '</defs>'
+    + '<rect id="graphHit" x="-5000" y="-5000" width="12000" height="12000" fill="url(#grid)"></rect>'
+    + '<g id="graphContent"></g>';
+  return document.getElementById("graphContent");
+}
+
+function selectNode(id) {
+  const n = nodeById(id);
+  if (!n || !isNodePresent(n, state.versionId)) return;
+  if (state.selectedNodeId === id) {
+    // still refresh detail in case panel stale
+    renderDetail();
+    return;
+  }
+  state.selectedNodeId = id;
+  renderGraph();
+  renderDetail();
+  renderVersionSummary();
+  renderStats();
+}
+
+function renderGraph() {
+  bindPanZoomOnce();
+  const content = ensureGraphScaffold();
+  if (!content) return;
+
+  const v = versionById(state.versionId);
+  const nodes = getA().nodes;
+  const nodeMap = Object.fromEntries(nodes.map(function(n) { return [n.id, n]; }));
+  let html = "";
+
+  getA().edges.forEach(function(edge) {
+    const a = nodeMap[edge.from];
+    const b = nodeMap[edge.to];
+    if (!a || !b) return;
+    const present = isEdgePresent(edge, state.versionId) && isNodePresent(a, state.versionId) && isNodePresent(b, state.versionId);
+    const sides = pickSides(a, b);
+    const p1 = anchor(a, sides[0]);
+    const p2 = anchor(b, sides[1]);
+    const path = curvePath(p1.x, p1.y, p2.x, p2.y);
+    const related = state.selectedNodeId && (edge.from === state.selectedNodeId || edge.to === state.selectedNodeId);
+    const cls = ["edge", present ? "" : "dim", related && present ? "active" : ""].filter(Boolean).join(" ");
+    html += '<path class="' + cls + '" d="' + path + '" marker-end="url(#' + (related && present ? "arrowActive" : "arrow") + ')"></path>';
+    const edgeLabel = localizedEdgeLabel(edge);
+    if (edgeLabel && present) {
+      const mx = (p1.x + p2.x) / 2;
+      const my = (p1.y + p2.y) / 2 - 6;
+      html += '<text class="edge-label" x="' + mx + '" y="' + my + '" text-anchor="middle">' + edgeLabel + '</text>';
+    }
+  });
+
+  nodes.forEach(function(node) {
+    const present = isNodePresent(node, state.versionId);
+    const change = nodeChange(node.id, state.versionId);
+    const selected = state.selectedNodeId === node.id;
+    const focused = (v.focus || []).indexOf(node.id) >= 0;
+    const classes = [
+      "node-group",
+      present ? "" : "absent",
+      selected ? "selected" : "",
+      change && change.status === "born" ? "born" : "",
+      change && change.status === "changed" ? "changed" : "",
+      state.selectedNodeId && !selected && !focused ? "dim" : ""
+    ].filter(Boolean).join(" ");
+
+    const iconColor = node.color;
+    let badge = "OK";
+    let badgeColor = "#6ea8ff";
+    if (!present) { badge = "v" + node.since + "+"; badgeColor = "#5d6b82"; }
+    else if (change && change.status === "born") { badge = "NEW"; badgeColor = "#f5b942"; }
+    else if (change && change.status === "changed") { badge = "UPD"; badgeColor = "#3dd68c"; }
+
+    const L = localizedNode(node);
+    const sub = !present
+      ? (node.since === 4 ? t("appearPlan") : t("appearSince", { v: "v" + node.since }))
+      : ((change && change.title) || node.layer);
+    const blurbFull = L.blurb || "";
+    const blurb = blurbFull.slice(0, 22) + (blurbFull.length > 22 ? "…" : "");
+
+    html += ''
+      + '<g class="' + classes + '" data-node="' + node.id + '" transform="translate(' + node.x + ', ' + node.y + ')">'
+      +   '<rect class="node-shell" width="' + node.w + '" height="' + node.h + '" rx="16" ry="16"></rect>'
+      +   '<circle class="node-icon-bg" cx="28" cy="28" r="12" fill="' + iconColor + '" fill-opacity="0.18"></circle>'
+      +   '<circle cx="28" cy="28" r="5.5" fill="' + iconColor + '"></circle>'
+      +   '<text class="node-title" x="48" y="25">' + L.label + '</text>'
+      +   '<text class="node-sub" x="48" y="43">' + sub + '</text>'
+      +   '<rect x="' + (node.w - 46) + '" y="14" width="34" height="18" rx="9" fill="' + badgeColor + '" fill-opacity="0.15" stroke="' + badgeColor + '" stroke-opacity="0.45"></rect>'
+      +   '<text class="node-badge" x="' + (node.w - 29) + '" y="27" text-anchor="middle" fill="' + badgeColor + '">' + badge + '</text>'
+      +   '<text class="node-sub" x="18" y="' + (node.h - 16) + '">' + blurb + '</text>'
+      + '</g>';
+  });
+
+  content.innerHTML = html;
+  applyCamera();
+}
+
+function renderVersionSummary() {
+  const v = localizedVersion(versionById(state.versionId));
+  $("versionTitle").textContent = v.key + " · " + v.title;
+  $("versionDate").textContent = v.date + " · " + (v.status === "planned" ? t("planned") : t("done"));
+  $("versionBullets").innerHTML = (v.bullets || []).map(function(b) { return "<li>" + b + "</li>"; }).join("");
+  $("overlayVersion").textContent = v.key + " " + v.title;
+  const changed = Object.keys((versionById(state.versionId).nodeChanges) || {}).length;
+  $("overlayChanged").textContent = String(changed);
+  $("statCurrent").textContent = v.key;
+  $("graphSub").textContent = v.summary;
+}
+
+function renderDetail() {
+  const body = $("detailBody");
+  const rawNode = nodeById(state.selectedNodeId);
+  const node = localizedNode(rawNode);
+  const v = localizedVersion(versionById(state.versionId));
+
+  if (!rawNode || !isNodePresent(rawNode, state.versionId)) {
+    $("detailTitle").textContent = t("nodeIntro");
+    $("detailSub").textContent = t("pickNode");
+    body.innerHTML = ''
+      + '<div class="empty-detail"><div>'
+      +   '<div class="icon">◎</div>'
+      +   '<h4>' + t("emptyNodeTitle") + '</h4>'
+      +   '<p>' + t("emptyNodeDesc") + '</p>'
+      + '</div></div>';
+    return;
+  }
+
+  const change = nodeChange(rawNode.id, state.versionId);
+  const history = nodeHistory(rawNode.id);
+  $("detailTitle").textContent = node.label;
+  $("detailSub").textContent = node.layer + " · " + t("appearSince", { v: "v" + rawNode.since }) + (rawNode.planned ? " (" + t("planned") + ")" : "");
+
+  const statusTag = !change
+    ? ('<span class="tag blue">' + t("stable") + '</span>')
+    : change.status === "born"
+      ? ('<span class="tag amber">' + t("born") + '</span>')
+      : ('<span class="tag green">' + t("changed") + '</span>');
+
+  const histHtml = history.map(function(h) {
+    const cls = [
+      "change-item",
+      h.version.id === state.versionId ? "current" : "",
+      h.version.id > state.versionId ? "future" : ""
+    ].filter(Boolean).join(" ");
+    return ''
+      + '<div class="' + cls + '">'
+      +   '<div class="ver">' + h.version.key + '</div>'
+      +   '<div class="txt"><b>' + h.change.title + '</b>' + h.change.detail + '</div>'
+      + '</div>';
+  }).join("") || ('<div class="kv-item"><div class="v">' + t("noHistory") + '</div></div>');
+
+  const statusText = change
+    ? ('<strong>' + change.title + '</strong> — ' + change.detail)
+    : t("noStructChange");
+
+  body.innerHTML = ''
+    + '<div class="tag-row">'
+    +   statusTag
+    +   '<span class="tag">' + node.layer + '</span>'
+    +   '<span class="tag purple">since v' + rawNode.since + '</span>'
+    + '</div>'
+    + '<div class="section-label">' + t("whatIs") + '</div>'
+    + '<div class="kv">'
+    +   '<div class="kv-item"><div class="k">' + t("duty") + '</div><div class="v">' + node.blurb + '</div></div>'
+    +   '<div class="kv-item"><div class="k">' + t("statusIn", { v: v.key }) + '</div><div class="v">' + statusText + '</div></div>'
+    + '</div>'
+    + '<div class="section-label">' + t("evolution") + '</div>'
+    + '<div class="change-list">' + histHtml + '</div>'
+    + '<div class="section-label">' + t("relations") + '</div>'
+    + '<div class="kv"><div class="kv-item"><div class="k">' + t("inOut") + '</div><div class="v">' + describeRelations(rawNode.id) + '</div></div></div>';
+}
+
+function describeRelations(nodeId) {
+  const v = state.versionId;
+  const outs = getA().edges.filter(function(e) { return e.from === nodeId && isEdgePresent(e, v); });
+  const ins = getA().edges.filter(function(e) { return e.to === nodeId && isEdgePresent(e, v); });
+  function fmt(list, dir) {
+    if (!list.length) return t("none");
+    return list.map(function(e) {
+      const other = localizedNode(nodeById(dir === "out" ? e.to : e.from));
+      const lab = localizedEdgeLabel(e);
+      return (other && other.label ? other.label : "?") + (lab ? "（" + lab + "）" : "");
+    }).join(state.lang === "en" ? ", " : "、");
+  }
+  return "→ " + fmt(outs, "out") + "<br>← " + fmt(ins, "in");
+}
+
+function renderStats() {
+  $("statVersions").textContent = String(getA().versions.length);
+  $("statNodes").textContent = String(getA().nodes.filter(function(n) { return isNodePresent(n, state.versionId); }).length);
+  const name = state.lang === "en" ? (getAEn().project.name || getA().project.name) : getA().project.name;
+  const sub = state.lang === "en" ? (getAEn().project.subtitle || t("subtitle")) : (getA().project.subtitle || t("subtitle"));
+  $("projectName").textContent = name;
+  $("projectSubtitle").textContent = sub;
+  document.title = name + " — Graph Architecture";
+}
+
+
+function applyStaticI18n() {
+  document.querySelectorAll("[data-i18n]").forEach(function(el) {
+    const key = el.getAttribute("data-i18n");
+    if (key) el.textContent = t(key);
+  });
+  const resizer = $("stageResizer");
+  if (resizer) {
+    resizer.title = t("resizeTip");
+    resizer.setAttribute("aria-label", t("resizeTip"));
+  }
+  if ($("zoomInBtn")) $("zoomInBtn").title = t("zoomIn");
+  if ($("zoomOutBtn")) $("zoomOutBtn").title = t("zoomOut");
+  if ($("zoomResetBtn")) $("zoomResetBtn").title = t("zoomReset");
+
+  // refresh AI skill pack labels
+  AI_SKILLS[0].name = t("skillBootstrapName");
+  AI_SKILLS[0].desc = t("skillBootstrapDesc");
+  AI_SKILLS[0].placeholder = t("skillBootstrapPh");
+  AI_SKILLS[0].prompts = [t("skillBootstrapP1"), t("skillBootstrapP2"), t("skillBootstrapP3")];
+  AI_SKILLS[1].name = t("skillIterateName");
+  AI_SKILLS[1].desc = t("skillIterateDesc");
+  AI_SKILLS[1].placeholder = t("skillIteratePh");
+  AI_SKILLS[1].prompts = [t("skillIterateP1"), t("skillIterateP2"), t("skillIterateP3")];
+  AI_SKILLS[2].name = t("skillDiffName");
+  AI_SKILLS[2].desc = t("skillDiffDesc");
+  AI_SKILLS[2].placeholder = t("skillDiffPh");
+  AI_SKILLS[2].prompts = [t("skillDiffP1"), t("skillDiffP2"), t("skillDiffP3")];
+  if (AI_SKILLS[3]) {
+    AI_SKILLS[3].name = t("skillRepoName");
+    AI_SKILLS[3].desc = t("skillRepoDesc");
+    AI_SKILLS[3].placeholder = t("skillRepoPh");
+    AI_SKILLS[3].prompts = [t("skillRepoP1"), t("skillRepoP2"), t("skillRepoP3")];
+  }
+  if (typeof renderAiRepoPath === "function") renderAiRepoPath();
+
+  const toggle = $("langToggle");
+  if (toggle) {
+    toggle.querySelectorAll("button").forEach(function(btn) {
+      btn.classList.toggle("active", btn.getAttribute("data-lang") === state.lang);
+    });
+  }
+}
+
+function setLang(lang) {
+  state.lang = lang === "en" ? "en" : "zh";
+  localStorage.setItem("loopy.lang", state.lang);
+  document.documentElement.lang = state.lang === "en" ? "en" : "zh-CN";
+  applyStaticI18n();
+  renderAll();
+  if (state.ai && state.ai.open) renderAiPanel(false);
+  else if (typeof renderAiPanel === "function") {
+    // keep skill labels fresh even if closed
+    try { renderAiSkills(); renderAiChips(); } catch (e) {}
+  }
+}
+
+function setProject(projectId) {
+  state.projectId = projectId;
+  localStorage.setItem("loopy.projectId", projectId);
+  const A = getA();
+  const firstDone = A.versions.find(function(v) { return v.status === "done"; });
+  if (firstDone) state.versionId = firstDone.id;
+  state.selectedNodeId = A.nodes[0] ? A.nodes[0].id : null;
+  var toggle = $("projectToggle");
+  if (toggle) {
+    toggle.querySelectorAll("button").forEach(function(btn) {
+      btn.classList.toggle("active", btn.getAttribute("data-project") === projectId);
+    });
+  }
+  applyStaticI18n();
+  renderAll();
+  applyCamera();
+}
+
+function bindLangToggle() {
+  const toggle = $("langToggle");
+  if (!toggle || toggle.dataset.bound) return;
+  toggle.dataset.bound = "1";
+  toggle.querySelectorAll("button").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      setLang(btn.getAttribute("data-lang"));
+    });
+  });
+}
+
+function bindProjectToggle() {
+  var toggle = $("projectToggle");
+  if (!toggle || toggle.dataset.bound) return;
+  toggle.dataset.bound = "1";
+  toggle.querySelectorAll("button").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      setProject(btn.getAttribute("data-project"));
+    });
+  });
+  // Sync initial active
+  toggle.querySelectorAll("button").forEach(function(btn) {
+    btn.classList.toggle("active", btn.getAttribute("data-project") === state.projectId);
+  });
+}
+
+function renderAll() {
+  applyStaticI18n();
+  renderStats();
+  renderTimeline();
+  renderGraph();
+  renderVersionSummary();
+  renderDetail();
+}
+
+async function hydrateFromDocs() {
+  try {
+    const [projectRes, reqRes] = await Promise.allSettled([
+      fetch("PROJECT.md"),
+      fetch("REQUIREMENTS.md")
+    ]);
+    if (projectRes.status === "fulfilled" && projectRes.value.ok) {
+      const md = await projectRes.value.text();
+      state.docs.project = md;
+      const titleMatch = md.match(/^# (.+)$/m);
+      if (titleMatch) getA().project.name = titleMatch[1].trim();
+    }
+    if (reqRes.status === "fulfilled" && reqRes.value.ok) {
+      state.docs.requirements = await reqRes.value.text();
+    }
+
+    // optional: pull titles/dates from version markdown if available
+    for (const v of getA().versions) {
+      if (v.status === "planned") continue;
+      try {
+        const res = await fetch(`VERSIONS/${v.key}.md`);
+        if (!res.ok) continue;
+        const md = await res.text();
+        state.docs.versions[v.key] = md;
+        const title = md.match(/^#\s+(v\d+\s+[—-]\s+.+)$/m);
+        const date = md.match(/>\s*日期：(.+)/);
+        if (title) {
+          const full = title[1].replace(/^v\d+\s+[—-]\s+/, "");
+          v.titleZh = full.trim();
+          if (state.lang !== "en") v.title = v.titleZh;
+        }
+        if (date) v.date = date[1].trim();
+      } catch (_) { /* static fallback is fine */ }
+    }
+  } catch (_) {
+    // offline / file:// fallback keeps embedded ARCH data
+  }
+}
+
+
+const AI_SKILLS = [
+  {
+    id: "bootstrap",
+    name: "启动版本 + 创建图",
+    tag: "SKILL 01",
+    desc: "项目刚开始：建立 v1 边界，生成第一张系统架构图与节点说明。",
+    placeholder: "例如：我们要做会议室预定，先画员工-前端-API-数据库-LDAP",
+    prompts: ["按现有 PROJECT 启动 v1 并建图", "只保留最小可行架构", "前端先做 PC Web"]
+  },
+  {
+    id: "iterate",
+    name: "版本迭代 + 更新图",
+    tag: "SKILL 02",
+    desc: "有了新版本：在图上新增/演进节点，记录本版变化，不重画整张图。",
+    placeholder: "例如：v4 要加手机端页面，并更新 Frontend 与 API 关系",
+    prompts: ["把当前规划做成下一版本", "给 Frontend 继续加手机页", "引入通知相关节点"]
+  },
+  {
+    id: "diff_boss",
+    name: "变化是什么 / 和以前有何不同",
+    tag: "SKILL 03",
+    desc: "给老板讲清楚：新功能为什么不是旧需求的延续，消除“这不就是小改一下”的幻觉。",
+    placeholder: "例如：说明 v3 邮件通知为什么不是 v2 的小修补",
+    prompts: ["对比当前版本和上一版", "解释为什么要独立成新需求", "用节点变化写老板可读摘要"]
+  },
+  {
+    id: "repo_history",
+    name: "选中 repo → 临时版本历史",
+    tag: "SKILL 04",
+    desc: "无 graph 的 repo：选中 folder，AI 分析并生成临时版本迭代，构建历史，同时写创建图表。",
+    placeholder: "例如：分析这个老项目，用临时版本补出演进史并画图",
+    prompts: ["从选中 repo 构建临时版本历史", "只根据目录证据切片，不编造业务", "分析后写图并标 temporary"]
+  }
+];
+
+state.ai = {
+  open: false,
+  skillId: "bootstrap",
+  messages: [],
+  repoPath: "",
+  repoFiles: []
+};
+
+function skillById(id) {
+  return AI_SKILLS.find(function(s) { return s.id === id; }) || AI_SKILLS[0];
+}
+
+function openAiDrawer() {
+  state.ai.open = true;
+  document.body.classList.add("ai-open");
+  $("aiDrawer").classList.add("open");
+  $("aiBackdrop").classList.add("open");
+  $("aiDrawer").setAttribute("aria-hidden", "false");
+  renderAiPanel(false);
+  setTimeout(function() { $("aiInput") && $("aiInput").focus(); }, 50);
+}
+
+function closeAiDrawer() {
+  state.ai.open = false;
+  document.body.classList.remove("ai-open");
+  $("aiDrawer").classList.remove("open");
+  $("aiBackdrop").classList.remove("open");
+  $("aiDrawer").setAttribute("aria-hidden", "true");
+}
+
+function renderAiSkills() {
+  const root = $("aiSkills");
+  if (!root) return;
+  root.innerHTML = AI_SKILLS.map(function(s) {
+    const active = s.id === state.ai.skillId ? "active" : "";
+    return ''
+      + '<button type="button" class="ai-skill ' + active + '" data-skill="' + s.id + '">'
+      +   '<div class="skill-top"><span class="skill-name">' + s.name + '</span><span class="skill-tag">' + s.tag + '</span></div>'
+      +   '<div class="skill-desc">' + s.desc + '</div>'
+      + '</button>';
+  }).join("");
+  root.querySelectorAll(".ai-skill").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      state.ai.skillId = btn.getAttribute("data-skill");
+      renderAiPanel(true);
+    });
+  });
+}
+
+function renderAiChips() {
+  const skill = skillById(state.ai.skillId);
+  const root = $("aiChips");
+  if (!root) return;
+  root.innerHTML = (skill.prompts || []).map(function(p, i) {
+    return '<button type="button" class="ai-chip-btn" data-i="' + i + '">' + p + '</button>';
+  }).join("");
+  root.querySelectorAll(".ai-chip-btn").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      $("aiInput").value = skill.prompts[Number(btn.getAttribute("data-i"))];
+      $("aiInput").focus();
+    });
+  });
+  $("aiInput").placeholder = skill.placeholder;
+  $("aiModeLabel").textContent = skill.name;
+}
+
+function pushAiMessage(role, text) {
+  state.ai.messages.push({ role: role, text: text, ts: Date.now() });
+  renderAiMessages();
+}
+
+function renderAiMessages() {
+  const root = $("aiMessages");
+  if (!root) return;
+  if (!state.ai.messages.length) {
+    const skill = skillById(state.ai.skillId);
+    root.innerHTML = '<div class="ai-msg bot"><span class="msg-meta">SYSTEM</span>' + escapeHtml(t("aiWelcome", { skill: skill.name })) + '</div>';
+    return;
+  }
+  root.innerHTML = state.ai.messages.map(function(m) {
+    const who = m.role === "user" ? "YOU" : "AI";
+    return '<div class="ai-msg ' + m.role + '"><span class="msg-meta">' + who + '</span>' + escapeHtml(m.text) + '</div>';
+  }).join("");
+  root.scrollTop = root.scrollHeight;
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;");
+}
+
+function renderAiPanel(resetWelcome) {
+  renderAiSkills();
+  renderAiChips();
+  if (resetWelcome && state.ai.messages.length === 0) renderAiMessages();
+  else renderAiMessages();
+}
+
+function currentVersion() {
+  return versionById(state.versionId);
+}
+
+function prevVersion() {
+  const list = getA().versions.filter(function(v) { return v.id < state.versionId; });
+  return list.length ? list[list.length - 1] : null;
+}
+
+function nextPlannedVersion() {
+  return getA().versions.find(function(v) { return v.status === "planned"; }) || null;
+}
+
+function summarizeGraphForPrompt() {
+  const v = currentVersion();
+  const present = getA().nodes.filter(function(n) { return isNodePresent(n, state.versionId); });
+  const changed = Object.keys(v.nodeChanges || {});
+  return {
+    version: v.key + " " + v.title,
+    nodes: present.map(function(n) { return n.label; }).join("、"),
+    changed: changed.map(function(id) {
+      const n = nodeById(id);
+      const c = v.nodeChanges[id];
+      return (n ? n.label : id) + ":" + c.title;
+    }).join("；")
+  };
+}
+
+function runAiAutoDecide() {
+  const v = currentVersion();
+  const planned = nextPlannedVersion();
+  let decision;
+  if (state.ai.repoPath) {
+    state.ai.skillId = "repo_history";
+    decision = "检测到已选中 repo folder。我选择【SKILL 04 选中 repo → 临时版本历史】：无 graph 也可先构建 temporary 历史并写图。";
+  } else if (getA().versions.length <= 1) {
+    state.ai.skillId = "bootstrap";
+    decision = "检测到图还很早。我选择【启动版本 + 创建图】：先把 v1 主链路讲清楚，避免一上来堆功能。";
+  } else if (planned) {
+    state.ai.skillId = "iterate";
+    decision = "检测到有规划中的 " + planned.key + "。我选择【版本迭代 + 更新图】：把规划节点落到可展示的演进上。";
+  } else {
+    state.ai.skillId = "diff_boss";
+    decision = "当前在 " + v.key + "。我选择【变化是什么】：先给老板一份和上一版的差异说明，消除“只是小改”的幻觉。";
+  }
+  renderAiPanel(false);
+  pushAiMessage("bot", decision + "\n\n接下来我会按这个 skill 行动。你也可以补充约束。");
+  setTimeout(function() { handleAiSubmit(true); }, 250);
+}
+
+function handleAiSubmit(fromAuto) {
+  const input = $("aiInput");
+  const raw = (input && input.value || "").trim();
+  const skill = skillById(state.ai.skillId);
+  const userText = raw || (fromAuto ? ("（自动）执行 " + skill.name) : "");
+  if (!userText) return;
+  if (input) input.value = "";
+  pushAiMessage("user", userText);
+
+  // simulate thinking
+  pushAiMessage("bot", "收到。正在按「" + skill.name + "」处理…");
+
+  setTimeout(function() {
+    // remove the transient thinking message (last bot if matches)
+    if (state.ai.messages.length && state.ai.messages[state.ai.messages.length - 1].text.indexOf("正在按") === 0) {
+      state.ai.messages.pop();
+    }
+    const reply = executeSkill(skill.id, userText);
+    pushAiMessage("bot", reply);
+    renderAll();
+    applyCamera();
+  }, 420);
+}
+
+function executeSkill(skillId, userText) {
+  if (skillId === "bootstrap") return skillBootstrap(userText);
+  if (skillId === "iterate") return skillIterate(userText);
+  if (skillId === "diff_boss") return skillDiffBoss(userText);
+  if (skillId === "repo_history") return skillRepoHistory(userText);
+  return "未知 skill。";
+}
+
+function renderAiRepoPath() {
+  const el = $("aiRepoPath");
+  if (!el) return;
+  if (state.ai.repoPath) {
+    el.textContent = state.ai.repoPath + (state.ai.repoFiles && state.ai.repoFiles.length ? " · " + state.ai.repoFiles.length + " files" : "");
+    el.classList.add("has");
+  } else {
+    el.textContent = t("aiRepoEmpty");
+    el.classList.remove("has");
+  }
+}
+
+function guessStackFromFiles(paths) {
+  const joined = paths.join("\n").toLowerCase();
+  const stack = [];
+  if (/\.tsx?$|package\.json|vite\.config|next\.config/.test(joined)) stack.push("Frontend/TS");
+  if (/requirements\.txt|pyproject\.toml|fastapi|django|flask/.test(joined)) stack.push("Python API");
+  if (/go\.mod|\.go$/.test(joined)) stack.push("Go");
+  if (/pom\.xml|build\.gradle/.test(joined)) stack.push("JVM");
+  if (/docker-compose|dockerfile/.test(joined)) stack.push("Docker");
+  if (/prisma|migrations|schema\.sql|\.sql$/.test(joined)) stack.push("DB");
+  if (!stack.length) stack.push("unknown-stack");
+  return stack;
+}
+
+function topLevelHints(paths) {
+  const tops = {};
+  paths.forEach(function(p) {
+    const parts = String(p).split(/[\\/]/).filter(Boolean);
+    if (parts.length) tops[parts[0]] = (tops[parts[0]] || 0) + 1;
+  });
+  return Object.keys(tops).sort(function(a, b) { return tops[b] - tops[a]; }).slice(0, 8);
+}
+
+function ensureNode(id, spec) {
+  let n = nodeById(id);
+  if (n) return n;
+  getA().nodes.push(Object.assign({ id: id, since: 1, w: 150, h: 78, color: "#6ea8ff", x: 100, y: 100 }, spec));
+  return nodeById(id);
+}
+
+function ensureEdge(from, to, label, labelEn) {
+  const exists = getA().edges.some(function(e) { return e.from === from && e.to === to; });
+  if (exists) return;
+  getA().edges.push({
+    from: from,
+    to: to,
+    label: label || "use",
+    labelEn: labelEn || label || "use",
+    since: 1
+  });
+}
+
+function nextVersionNumericId() {
+  let max = 0;
+  getA().versions.forEach(function(v) { if (v.id > max) max = v.id; });
+  return max + 1;
+}
+
+function skillRepoHistory(userText) {
+  const repo = state.ai.repoPath;
+  if (!repo) {
+    state.ai.skillId = "repo_history";
+    return [
+      "【SKILL 04 需要先选中 repo folder】",
+      "",
+      "这是给「还没有使用 graph 的 repo」补构建历史的入口。",
+      "1. 点上方「选择文件夹」选中 repo",
+      "2. 再发送分析目标（或点快捷句）",
+      "3. AI 会生成 temporary 版本历史，并写创建/更新图表",
+      "",
+      "你的输入：" + userText
+    ].join("\n");
+  }
+
+  const paths = state.ai.repoFiles || [];
+  const stack = guessStackFromFiles(paths);
+  const tops = topLevelHints(paths);
+  const today = new Date().toISOString().slice(0, 10);
+  const baseId = nextVersionNumericId();
+  const nameHint = repo.split(/[\\/]/).filter(Boolean).pop() || "repo";
+
+  getA().versions = getA().versions.filter(function(v) {
+    return !(v.status === "temporary" && v.sourceRepo === repo);
+  });
+
+  const hasFrontend = stack.some(function(s) { return /Front|TS|JS/i.test(s); });
+  const hasApi = stack.some(function(s) { return /API|Python|Go|JVM/i.test(s); });
+  const hasDb = stack.some(function(s) { return /DB/i.test(s); }) || tops.some(function(x) { return /db|data|sql|prisma/i.test(x); });
+
+  ensureNode("user", {
+    label: "User",
+    labelEn: "User",
+    layer: "actor",
+    x: 70, y: 250, w: 140, h: 78,
+    color: "#8b97ad",
+    blurb: "使用者入口（由 repo 分析推断）",
+    blurbEn: "User entry (inferred from repo)",
+    since: 1
+  });
+  if (hasFrontend) {
+    ensureNode("frontend", {
+      label: "Frontend",
+      labelEn: "Frontend",
+      layer: "client",
+      x: 280, y: 120, w: 168, h: 92,
+      color: "#6ea8ff",
+      blurb: "前端（目录证据）",
+      blurbEn: "Frontend (from tree)",
+      since: 1
+    });
+  }
+  if (hasApi) {
+    ensureNode("api", {
+      label: "API / Backend",
+      labelEn: "API / Backend",
+      layer: "service",
+      x: 530, y: 190, w: 180, h: 96,
+      color: "#3dd68c",
+      blurb: "后端 API（目录证据）",
+      blurbEn: "Backend API (from tree)",
+      since: 1
+    });
+  }
+  if (hasDb) {
+    ensureNode("db", {
+      label: "Database",
+      labelEn: "Database",
+      layer: "data",
+      x: 790, y: 190, w: 150, h: 88,
+      color: "#6ea8ff",
+      blurb: "数据存储（目录证据）",
+      blurbEn: "Storage (from tree)",
+      since: 1
+    });
+  }
+  ensureNode("repo_root", {
+    label: "Repo",
+    labelEn: "Repo",
+    layer: "system",
+    x: 70, y: 40, w: 150, h: 78,
+    color: "#f5b942",
+    blurb: "选中的无 graph 仓库根",
+    blurbEn: "Selected repo root (no prior graph)",
+    since: baseId
+  });
+
+  if (hasFrontend) ensureEdge("user", "frontend", "使用", "uses");
+  if (hasFrontend && hasApi) ensureEdge("frontend", "api", "REST", "REST");
+  if (!hasFrontend && hasApi) ensureEdge("user", "api", "调用", "calls");
+  if (hasApi && hasDb) ensureEdge("api", "db", "读写", "R/W");
+  const repoTarget = hasApi ? "api" : (hasFrontend ? "frontend" : "user");
+  const existsRepoEdge = getA().edges.some(function(e) { return e.from === "repo_root" && e.to === repoTarget; });
+  if (!existsRepoEdge) {
+    getA().edges.push({ from: "repo_root", to: repoTarget, label: "包含", labelEn: "contains", since: baseId });
+  }
+
+  const d1 = {
+    id: baseId,
+    key: "draft-v1",
+    title: nameHint + " · 基线（临时）",
+    titleZh: nameHint + " · 基线（临时）",
+    titleEn: nameHint + " · baseline (temporary)",
+    date: today,
+    status: "temporary",
+    sourceRepo: repo,
+    summary: "从 repo 目录证据构建的临时基线，非正式发版",
+    summaryEn: "Temporary baseline from repo evidence — not a formal release",
+    bullets: [
+      "来源 repo：" + repo,
+      "观察到的栈：" + stack.join(", "),
+      "顶层目录：" + (tops.join(", ") || "—"),
+      "状态 temporary：确认前不进入正式演进结论"
+    ],
+    bulletsEn: [
+      "Source repo: " + repo,
+      "Observed stack: " + stack.join(", "),
+      "Top-level: " + (tops.join(", ") || "—"),
+      "temporary until promoted"
+    ],
+    focus: [hasFrontend ? "frontend" : (hasApi ? "api" : "repo_root")],
+    nodeChanges: {
+      repo_root: {
+        status: "born",
+        title: "挂接分析源",
+        titleEn: "Attach analysis source",
+        detail: "无 graph 历史的 repo 被选中，作为构建历史入口",
+        detailEn: "Repo without graph history selected as history bootstrap source"
+      }
+    }
+  };
+  if (hasFrontend) {
+    d1.nodeChanges.frontend = {
+      status: "born",
+      title: "推断前端边界",
+      titleEn: "Inferred frontend boundary",
+      detail: "目录中出现前端特征文件",
+      detailEn: "Frontend markers found in tree"
+    };
+  }
+  if (hasApi) {
+    d1.nodeChanges.api = {
+      status: "born",
+      title: "推断 API 边界",
+      titleEn: "Inferred API boundary",
+      detail: "目录中出现后端/API 特征",
+      detailEn: "Backend/API markers found in tree"
+    };
+  }
+  if (hasDb) {
+    d1.nodeChanges.db = {
+      status: "born",
+      title: "推断数据层",
+      titleEn: "Inferred data layer",
+      detail: "存在 schema/sql/migrate 等线索",
+      detailEn: "schema/sql/migrate clues present"
+    };
+  }
+
+  const d2 = {
+    id: baseId + 1,
+    key: "draft-v2",
+    title: nameHint + " · 下一迭代建议（临时）",
+    titleZh: nameHint + " · 下一迭代建议（临时）",
+    titleEn: nameHint + " · next iteration suggestion (temporary)",
+    date: today,
+    status: "temporary",
+    sourceRepo: repo,
+    summary: "基于基线的临时下一刀，需人工确认后 promote",
+    summaryEn: "Suggested next slice from baseline — promote after confirm",
+    bullets: [
+      "建议：补测试/边界文档/部署线索（仅建议）",
+      "不把猜测写成正式 vN",
+      "用户目标：" + (userText || "（未填，按默认分析）")
+    ],
+    bulletsEn: [
+      "Suggest: tests / boundary docs / deploy clues",
+      "Do not treat as formal vN",
+      "User goal: " + (userText || "(default analyze)")
+    ],
+    focus: ["repo_root"],
+    nodeChanges: {
+      repo_root: {
+        status: "changed",
+        title: "标记待确认迭代",
+        titleEn: "Mark iteration pending confirm",
+        detail: "temporary draft-v2，可丢可改",
+        detailEn: "temporary draft-v2, disposable"
+      }
+    }
+  };
+
+  getA().versions.push(d1, d2);
+  getA().versions.sort(function(a, b) { return a.id - b.id; });
+  state.versionId = d1.id;
+  state.selectedNodeId = d1.focus[0];
+
+  try {
+    localStorage.setItem("loopy.graphEngineer.lastRepoAnalyze", JSON.stringify({
+      skill: "graph-engineer",
+      mode: "repo_history",
+      repo: repo,
+      stack: stack,
+      tops: tops,
+      drafts: ["draft-v1", "draft-v2"],
+      status: "temporary",
+      at: today,
+      userText: userText
+    }));
+  } catch (_) {}
+
+  const g = summarizeGraphForPrompt();
+  return [
+    "【Graph Engineer · SKILL 04】无 graph repo → 临时版本构建历史 + 写图",
+    "",
+    "选中 repo：" + repo,
+    "扫描文件数：" + paths.length,
+    "栈线索：" + stack.join(", "),
+    "顶层：" + (tops.join(", ") || "—"),
+    "",
+    "已写入（内存图 + 可落盘 draft）：",
+    "· draft-v1  基线 temporary",
+    "· draft-v2  下一迭代建议 temporary",
+    "",
+    "图表：已按目录证据创建/更新节点与边，时间轴带 TEMP 标记。",
+    "当前版本：" + g.version,
+    "节点：" + g.nodes,
+    "",
+    "你的问题：" + userText,
+    "",
+    "重要：",
+    "· 这些是 temporary，用来给没有 graph 的 repo 补「构建历史」",
+    "· 确认后用 loopy version promote draft-v1 --as v1 升格正式版",
+    "· 接上 agent 后会写入 dashboard/VERSIONS/draft-*.md"
+  ].join("\n");
+}
+
+function skillBootstrap(userText) {
+  state.versionId = 1;
+  state.selectedNodeId = "frontend";
+  const g = summarizeGraphForPrompt();
+  return [
+    "【已启动 v1 并创建/对齐架构图】",
+    "",
+    "我做了这些事：",
+    "1. 切到 v1（MVP 主链路）",
+    "2. 保留最小节点：员工、Frontend、FastAPI、PostgreSQL、LDAP",
+    "3. 高亮 Frontend 作为讲解入口",
+    "",
+    "当前图状态：",
+    "· 版本：" + g.version,
+    "· 节点：" + g.nodes,
+    "· 本版变化：" + (g.changed || "初始建图"),
+    "",
+    "你的输入：" + userText,
+    "",
+    "给老板一句话：",
+    "v1 不是“做完所有功能”，而是先打通预定闭环，证明并发冲突和登录能跑通。"
+  ].join("\n");
+}
+
+function skillIterate(userText) {
+  const planned = nextPlannedVersion();
+  const target = planned || currentVersion();
+  state.versionId = target.id;
+
+  // If user mentions mobile / 手机, focus mobile when present
+  const t = userText || "";
+  if (/手机|mobile|移动端/i.test(t) && nodeById("mobile") && isNodePresent(nodeById("mobile"), state.versionId)) {
+    state.selectedNodeId = "mobile";
+  } else if (/看板|analytics|数据/i.test(t) && nodeById("analytics") && isNodePresent(nodeById("analytics"), state.versionId)) {
+    state.selectedNodeId = "analytics";
+  } else if (target.focus && target.focus.length) {
+    state.selectedNodeId = target.focus[0];
+  }
+
+  // Mild live update: if planned version and user asks to add something not present, annotate summary
+  const changes = Object.keys(target.nodeChanges || {}).map(function(id) {
+    const n = nodeById(id);
+    const c = target.nodeChanges[id];
+    const mark = c.status === "born" ? "新增" : "演进";
+    return "· " + mark + " " + (n ? n.label : id) + " — " + c.title + "：" + c.detail;
+  });
+
+  return [
+    "已按【版本迭代 + 更新图】处理",
+    "",
+    "目标版本：" + target.key + " · " + target.title + (target.status === "planned" ? "（规划）" : ""),
+    "图已切换到该版本相机视角对应的节点高亮。",
+    "",
+    "本版图上的结构性变化：",
+    changes.join("\n") || "· 无节点级结构变化（可能是文案/细节迭代）",
+    "",
+    "结合你的需求：",
+    userText,
+    "",
+    "建议讲解顺序：",
+    "1) 先点时间轴看版本",
+    "2) 再点高亮节点看“跨版本如何演进”",
+    "3) 最后用右侧摘要对齐目标"
+  ].join("\n");
+}
+
+function skillDiffBoss(userText) {
+  const cur = currentVersion();
+  const prev = prevVersion();
+  state.selectedNodeId = (cur.focus && cur.focus[0]) || state.selectedNodeId;
+
+  if (!prev) {
+    return [
+      "当前是最早版本 " + cur.key + "，没有“之前版本”可对比。",
+      "建议先用【启动版本 + 创建图】讲 v1 边界，再做迭代对比。"
+    ].join("\n");
+  }
+
+  const curIds = new Set(Object.keys(cur.nodeChanges || {}));
+  const born = [];
+  const changed = [];
+  Object.keys(cur.nodeChanges || {}).forEach(function(id) {
+    const n = nodeById(id);
+    const c = cur.nodeChanges[id];
+    const line = (n ? n.label : id) + "：" + c.title + " — " + c.detail;
+    if (c.status === "born") born.push(line); else changed.push(line);
+  });
+
+  // nodes present now but not in prev
+  const newNodes = getA().nodes.filter(function(n) {
+    return isNodePresent(n, cur.id) && !isNodePresent(n, prev.id);
+  }).map(function(n) { return n.label; });
+
+  return [
+    "给老板的差异说明（消除幻觉）",
+    "",
+    "对比：" + prev.key + " → " + cur.key,
+    prev.key + "：" + prev.title,
+    cur.key + "：" + cur.title,
+    "",
+    "一句话结论：",
+    cur.key + " 不是在 " + prev.key + " 上“修修补补”，而是引入了新的能力边界/基础设施/用户角色入口。",
+    "",
+    "1) 新增了什么（以前没有）",
+    (born.map(function(x){return "· " + x;}).join("\n") || (newNodes.length ? newNodes.map(function(x){return "· 节点 " + x;}).join("\n") : "· 无全新节点，但职责边界变了")),
+    "",
+    "2) 旧节点如何演进（不是原样）",
+    (changed.map(function(x){return "· " + x;}).join("\n") || "· 本版以新增为主"),
+    "",
+    "3) 为什么不能算同一个需求继续改",
+    "· 涉及的模块集合不同：" + (newNodes.join("、") || "权限/异步/数据模型等横切能力"),
+    "· 验证方式不同：需要单独测试与部署注意事项（见 REQUIREMENTS 部署建议）",
+    "· 对用户可见的入口/角色可能变化（例如 Admin / Mobile / 通知）",
+    "",
+    "4) 建议你怎么讲",
+    "先打开时间轴点 " + prev.key + "，再点 " + cur.key + "，让图自己“长出”新节点；",
+    "然后点一个 NEW/UPD 节点，读右侧“跨版本如何演进”。",
+    "",
+    "你的问题：" + userText
+  ].join("\n");
+}
+
+function bindAiUi() {
+  const fab = $("aiFab");
+  const close = $("aiClose");
+  const backdrop = $("aiBackdrop");
+  const send = $("aiSend");
+  const autoBtn = $("aiAutoBtn");
+  const input = $("aiInput");
+  const repoPick = $("aiRepoPick");
+  const repoClear = $("aiRepoClear");
+  const repoInput = $("aiRepoInput");
+  if (!fab) return;
+
+  fab.addEventListener("click", openAiDrawer);
+  close && close.addEventListener("click", closeAiDrawer);
+  backdrop && backdrop.addEventListener("click", closeAiDrawer);
+  autoBtn && autoBtn.addEventListener("click", function() { runAiAutoDecide(); });
+  send && send.addEventListener("click", function() { handleAiSubmit(false); });
+  input && input.addEventListener("keydown", function(e) {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      handleAiSubmit(false);
+    }
+  });
+  document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape" && state.ai.open) closeAiDrawer();
+  });
+
+  repoPick && repoPick.addEventListener("click", function() {
+    if (repoInput) repoInput.click();
+  });
+  repoClear && repoClear.addEventListener("click", function() {
+    state.ai.repoPath = "";
+    state.ai.repoFiles = [];
+    if (repoInput) repoInput.value = "";
+    renderAiRepoPath();
+  });
+  repoInput && repoInput.addEventListener("change", function() {
+    const files = Array.prototype.slice.call(repoInput.files || []);
+    if (!files.length) return;
+    const rel0 = files[0].webkitRelativePath || files[0].name;
+    const root = String(rel0).split(/[\\/]/)[0] || rel0;
+    state.ai.repoPath = root;
+    state.ai.repoFiles = files.map(function(f) { return f.webkitRelativePath || f.name; });
+    state.ai.skillId = "repo_history";
+    renderAiRepoPath();
+    renderAiPanel(true);
+    pushAiMessage("bot", "已选中 repo folder：「" + root + "」（" + files.length + " files）。\n已切换到 SKILL 04。发送问题后将：分析 → 临时版本历史 → 写创建图表。");
+  });
+
+  renderAiRepoPath();
+  renderAiPanel(true);
+}
+
+
+
+function bindStageResizer() {
+  const resizer = $("stageResizer");
+  const stage = document.querySelector(".stage");
+  if (!resizer || !stage || resizer.dataset.bound) return;
+  resizer.dataset.bound = "1";
+
+  const saved = Number(localStorage.getItem("loopy.sideW") || 0);
+  if (saved >= 280 && saved <= 640) {
+    stage.style.setProperty("--side-w", saved + "px");
+  }
+
+  let on = false;
+  let startX = 0;
+  let startW = 360;
+
+  resizer.addEventListener("pointerdown", function(e) {
+    if (e.button !== 0 && e.pointerType === "mouse") return;
+    on = true;
+    startX = e.clientX;
+    const side = $("sidePanel");
+    startW = side ? side.getBoundingClientRect().width : 360;
+    document.body.classList.add("is-resizing-stage");
+    try { resizer.setPointerCapture(e.pointerId); } catch (err) {}
+    resizer.classList.add("is-dragging");
+    e.preventDefault();
+  });
+
+  resizer.addEventListener("pointermove", function(e) {
+    if (!on) return;
+    // drag handle left => side wider? User wants graph width adjustable.
+    // Moving resizer to the right shrinks side / grows graph.
+    const dx = e.clientX - startX;
+    let next = startW - dx;
+    const stageW = stage.getBoundingClientRect().width;
+    const minSide = 280;
+    const maxSide = Math.min(640, Math.max(minSide, stageW - 420 - 20));
+    next = Math.max(minSide, Math.min(maxSide, next));
+    stage.style.setProperty("--side-w", next + "px");
+  });
+
+  function end() {
+    if (!on) return;
+    on = false;
+    document.body.classList.remove("is-resizing-stage");
+    resizer.classList.remove("is-dragging");
+    const side = $("sidePanel");
+    if (side) {
+      const w = Math.round(side.getBoundingClientRect().width);
+      localStorage.setItem("loopy.sideW", String(w));
+    }
+  }
+  resizer.addEventListener("pointerup", end);
+  resizer.addEventListener("pointercancel", end);
+}
+
+(async function init() {
+  await hydrateFromDocs();
+  const latestDone = [...getA().versions].reverse().find(v => v.status === "done");
+  if (latestDone) state.versionId = latestDone.id;
+  if (!state.lang) state.lang = "zh";
+  document.documentElement.lang = state.lang === "en" ? "en" : "zh-CN";
+  bindPanZoomOnce();
+  bindStageResizer();
+  bindLangToggle();
+  bindProjectToggle();
+  bindAiUi();
+  applyStaticI18n();
+  renderAll();
+  applyCamera();
+})();
+</script>
+</body>
+</html>
